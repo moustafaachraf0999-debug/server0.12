@@ -13,54 +13,14 @@ const stableNemesisHash = (value: string): number => {
 	return hash >>> 0
 }
 
-const isValidNemesisCandidate = (
-	lobbyType: LobbyType,
-	player: Client,
-	candidate: Client | null | undefined,
-	requireActive: boolean,
-): candidate is Client => {
-	if (!candidate || candidate.id === player.id) {
-		return false
-	}
-
-	if (requireActive && !candidate.isInMatch) {
-		return false
-	}
-
-	if (lobbyType === 'teams') {
-		const playerTeam = player.team ?? 1
-		const candidateTeam = candidate.team ?? 1
-		if (playerTeam === candidateTeam) {
-			return false
-		}
-	}
-
-	return true
-}
-
-const getNemesisCandidatesForPlayer = (
-	players: ReadonlyMap<string, Client>,
-	lobbyType: LobbyType,
-	player: Client,
-	requireActive: boolean,
-): Client[] => {
-	return Array.from(players.values()).filter((candidate) =>
-		isValidNemesisCandidate(lobbyType, player, candidate, requireActive),
-	)
-}
-
-const selectNemesisForPlayer = (
+const rankPlayers = (
 	lobbyCode: string,
-	player: Client,
-	candidates: Client[],
-): Client | null => {
-	if (candidates.length === 0) {
-		return null
-	}
-
-	const rankedCandidates = [...candidates].sort((a, b) => {
-		const scoreA = stableNemesisHash(`${lobbyCode}:${player.id}:${a.id}`)
-		const scoreB = stableNemesisHash(`${lobbyCode}:${player.id}:${b.id}`)
+	scope: string,
+	players: Client[],
+) =>
+	[...players].sort((a, b) => {
+		const scoreA = stableNemesisHash(`${lobbyCode}:${scope}:${a.id}`)
+		const scoreB = stableNemesisHash(`${lobbyCode}:${scope}:${b.id}`)
 		if (scoreA !== scoreB) {
 			return scoreA - scoreB
 		}
@@ -68,7 +28,90 @@ const selectNemesisForPlayer = (
 		return a.id.localeCompare(b.id)
 	})
 
-	return rankedCandidates[0] ?? null
+const getEligiblePlayers = (
+	players: ReadonlyMap<string, Client>,
+	requireActive: boolean,
+) =>
+	Array.from(players.values()).filter(
+		(player) => !requireActive || player.isInMatch,
+	)
+
+const pairNemeses = (left: Client, right: Client) => {
+	left.nemesisPlayerId = right.id
+	right.nemesisPlayerId = left.id
+}
+
+const assignFfaNemeses = (lobbyCode: string, players: Client[]) => {
+	const rankedPlayers = rankPlayers(lobbyCode, 'ffa-pairs', players)
+	for (let index = 0; index + 1 < rankedPlayers.length; index += 2) {
+		pairNemeses(rankedPlayers[index], rankedPlayers[index + 1])
+	}
+}
+
+type TeamBucket = {
+	teamId: number
+	players: Client[]
+}
+
+const rankTeamBuckets = (
+	lobbyCode: string,
+	buckets: TeamBucket[],
+	pairIndex: number,
+) =>
+	[...buckets]
+		.filter((bucket) => bucket.players.length > 0)
+		.sort((a, b) => {
+			if (a.players.length !== b.players.length) {
+				return b.players.length - a.players.length
+			}
+
+			const scoreA = stableNemesisHash(
+				`${lobbyCode}:team-pairs:${pairIndex}:${a.teamId}`,
+			)
+			const scoreB = stableNemesisHash(
+				`${lobbyCode}:team-pairs:${pairIndex}:${b.teamId}`,
+			)
+			if (scoreA !== scoreB) {
+				return scoreA - scoreB
+			}
+
+			return a.teamId - b.teamId
+		})
+
+const assignTeamNemeses = (lobbyCode: string, players: Client[]) => {
+	const bucketsByTeam = new Map<number, Client[]>()
+	for (const player of players) {
+		const teamId = player.team ?? 1
+		bucketsByTeam.set(teamId, [...(bucketsByTeam.get(teamId) ?? []), player])
+	}
+
+	const buckets: TeamBucket[] = Array.from(bucketsByTeam.entries()).map(
+		([teamId, teamPlayers]) => ({
+			teamId,
+			players: rankPlayers(lobbyCode, `team-${teamId}-players`, teamPlayers),
+		}),
+	)
+
+	let pairIndex = 0
+	while (true) {
+		const [leftBucket, rightBucket] = rankTeamBuckets(
+			lobbyCode,
+			buckets,
+			pairIndex,
+		)
+		if (!leftBucket || !rightBucket) {
+			break
+		}
+
+		const left = leftBucket.players.shift()
+		const right = rightBucket.players.shift()
+		if (!left || !right) {
+			break
+		}
+
+		pairNemeses(left, right)
+		pairIndex += 1
+	}
 }
 
 export const refreshLobbyNemesisAssignments = (
@@ -82,22 +125,14 @@ export const refreshLobbyNemesisAssignments = (
 	}
 
 	for (const player of players.values()) {
-		const currentNemesis = player.nemesisPlayerId
-			? players.get(player.nemesisPlayerId) ?? null
-			: null
+		player.nemesisPlayerId = null
+	}
 
-		if (
-			isValidNemesisCandidate(lobbyType, player, currentNemesis, requireActive)
-		) {
-			continue
-		}
-
-		const replacement = selectNemesisForPlayer(
-			lobbyCode,
-			player,
-			getNemesisCandidatesForPlayer(players, lobbyType, player, requireActive),
-		)
-		player.nemesisPlayerId = replacement ? replacement.id : null
+	const eligiblePlayers = getEligiblePlayers(players, requireActive)
+	if (lobbyType === 'teams') {
+		assignTeamNemeses(lobbyCode, eligiblePlayers)
+	} else {
+		assignFfaNemeses(lobbyCode, eligiblePlayers)
 	}
 }
 

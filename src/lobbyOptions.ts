@@ -9,6 +9,11 @@ import {
 
 export interface LobbyOptions {
 	back?: string
+	bonus_consumable_slots?: number
+	bonus_discards?: number
+	bonus_hands?: number
+	bonus_joker_slots?: number
+	bonus_money?: number
 	challenge?: string
 	cocktail?: string
 	custom_bans?: string
@@ -28,12 +33,12 @@ export interface LobbyOptions {
 	normal_bosses?: boolean
 	preview_disabled?: boolean
 	pvp_custom_winners?: number
+	pvp_custom_winners_percent?: number
 	pvp_score_rule?: PvpScoreRule
 	random_loadout?: boolean
 	team_card_sync?: boolean
 	team_hand_level_sync?: boolean
 	team_money_sync?: boolean
-	pvp_countdown_seconds?: number
 	pvp_start_round?: number
 	ruleset?: string
 	showdown_starting_antes?: number
@@ -200,6 +205,7 @@ const GROUP_DEFAULT_LOBBY_OPTIONS = {
 const HEAD_TO_HEAD_LOBBY_OPTIONS = {
 	max_players: 2,
 	pvp_custom_winners: 1,
+	pvp_custom_winners_percent: 0,
 	pvp_score_rule: 'highest',
 } as LobbyOptions
 
@@ -216,6 +222,11 @@ export const getDefaultCustomWinnerCount = (maxPlayers: number | undefined) =>
 export const getCustomWinnerLimit = (maxPlayers: number | undefined) =>
 	Math.max(1, Math.trunc(Math.max(1, maxPlayers ?? 1)) - 1)
 
+const getCustomWinnerCountFromPercent = (
+	percent: number,
+	entryCount: number,
+) => Math.floor((entryCount * percent) / 100 + 0.5)
+
 export const getLobbyCustomWinnerCount = (
 	options: LobbyOptions | undefined,
 	entryCount?: number,
@@ -226,10 +237,19 @@ export const getLobbyCustomWinnerCount = (
 		getCustomWinnerLimit(maxPlayers),
 		Math.max(1, maxEntries - 1),
 	)
+	const configuredPercent = Math.trunc(
+		Number(options?.pvp_custom_winners_percent),
+	)
 	const configuredCount = Math.trunc(Number(options?.pvp_custom_winners))
-	const winnerCount = Number.isFinite(configuredCount)
-		? configuredCount
-		: getDefaultCustomWinnerCount(maxPlayers)
+	const winnerCount =
+		Number.isFinite(configuredPercent) && configuredPercent > 0
+			? getCustomWinnerCountFromPercent(
+					Math.min(100, configuredPercent),
+					maxEntries,
+			  )
+			: Number.isFinite(configuredCount)
+			  ? configuredCount
+			  : getDefaultCustomWinnerCount(maxPlayers)
 
 	return Math.max(1, Math.min(maxWinners, winnerCount))
 }

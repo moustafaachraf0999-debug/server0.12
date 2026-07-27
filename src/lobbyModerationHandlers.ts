@@ -4,6 +4,7 @@ import type {
 	ActionKickPlayer,
 	ActionMakePlayerHost,
 } from './actions.js'
+import { clearPendingLobbyJoinRequestsForClient } from './lobbyAccessHandlers.js'
 import { broadcastLobbyInfo } from './lobbyBroadcasts.js'
 import { kickLobbyPlayer, leaveLobbyClient } from './lobbyDeparture.js'
 import { disconnectLobbyClient } from './lobbyReconnect/disconnect.js'
@@ -60,6 +61,7 @@ export const makePlayerHostAction = (
 }
 
 export const disconnectFromLobbyAction = (client: Client) => {
+	clearPendingLobbyJoinRequestsForClient(client)
 	const lobby = client.lobby
 	if (!lobby) return
 

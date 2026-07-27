@@ -34,6 +34,8 @@ export type {
 	ActionMakePlayerHost,
 	ActionReadyLobby,
 	ActionRejoinLobby,
+	ActionRequestLobbyList,
+	ActionRespondToLobbyJoinRequest,
 	ActionReturnToLobby,
 	ActionSetLobbyType,
 	ActionSetTeam,

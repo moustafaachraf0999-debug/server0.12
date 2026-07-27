@@ -19,10 +19,15 @@
 		"timer"
 	],
 	"numericKeys": [
+		"bonus_consumable_slots",
+		"bonus_discards",
+		"bonus_hands",
+		"bonus_joker_slots",
+		"bonus_money",
 		"coop_blind_scaling_per_player",
 		"max_players",
-		"pvp_countdown_seconds",
 		"pvp_custom_winners",
+		"pvp_custom_winners_percent",
 		"pvp_start_round",
 		"showdown_starting_antes",
 		"stake",
@@ -46,6 +51,11 @@
 	"sharedDeckKeys": ["back", "sleeve", "stake", "challenge", "cocktail"],
 	"baseDefaults": {
 		"back": "Red Deck",
+		"bonus_consumable_slots": 0,
+		"bonus_discards": 0,
+		"bonus_hands": 0,
+		"bonus_joker_slots": 0,
+		"bonus_money": 0,
 		"challenge": "",
 		"cocktail": "",
 		"custom_bans": "",
@@ -65,11 +75,11 @@
 		"preview_disabled": false,
 		"random_loadout": false,
 		"pvp_custom_winners": 1,
+		"pvp_custom_winners_percent": 50,
 		"pvp_score_rule": "highest",
 		"team_card_sync": false,
 		"team_hand_level_sync": true,
 		"team_money_sync": true,
-		"pvp_countdown_seconds": 3,
 		"pvp_start_round": 2,
 		"ruleset": "ruleset_mp_standard_ranked",
 		"showdown_starting_antes": 3,
@@ -84,6 +94,7 @@
 	},
 	"groupLobbyDefaults": {
 		"max_players": 16,
-		"pvp_custom_winners": 8
+		"pvp_custom_winners": 8,
+		"pvp_custom_winners_percent": 50
 	}
 }

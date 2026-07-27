@@ -1,11 +1,13 @@
+import { randomBytes } from 'node:crypto'
 import type Client from './Client.js'
-import type { GameMode, LobbyType } from './actions.js'
+import type { GameMode, LobbyAccessMode, LobbyType } from './actions.js'
 import { LobbyAnteTimerState } from './lobbyAnteTimer.js'
 import { LobbyDuelState } from './lobbyDuelState.js'
 import type { DisconnectedSlot } from './lobbyReconnect/shared.js'
 import { allocateLobbyCode, registerLobby } from './lobbyRegistry.js'
 import { LobbyTeamState } from './lobbyTeamState.js'
 import { DEFAULT_GAME_MODE } from './gameModes.js'
+import { DEFAULT_LOBBY_ACCESS_MODE } from './lobbyAccess.js'
 import {
 	type LobbyOptions,
 	getDefaultLobbyOptions,
@@ -23,10 +25,17 @@ type EndGameSnapshot = {
 	summary?: string
 }
 
+export type PendingLobbyJoinRequest = {
+	requestId: string
+	client: Client
+	createdAt: number
+}
+
 class Lobby {
 	code: string
 	gameMode: GameMode
 	lobbyType: LobbyType
+	accessMode: LobbyAccessMode
 	options: LobbyOptions
 	isInGame = false
 	coopSaveId: string | null = null
@@ -43,12 +52,14 @@ class Lobby {
 	/** Tracks disconnected players awaiting reconnection */
 	private disconnectedSlots = new Map<string, DisconnectedSlot>()
 	private endGameSnapshots = new Map<string, EndGameSnapshot>()
+	private pendingJoinRequests = new Map<string, PendingLobbyJoinRequest>()
 
 	// Attrition is the default game mode, FFA is the default lobby type
 	constructor(
 		host: Client,
 		gameMode: GameMode = DEFAULT_GAME_MODE,
 		lobbyType: LobbyType = DEFAULT_LOBBY_TYPE,
+		accessMode: LobbyAccessMode = DEFAULT_LOBBY_ACCESS_MODE,
 	) {
 		this.code = allocateLobbyCode()
 		registerLobby(this)
@@ -56,6 +67,7 @@ class Lobby {
 		this.ownerId = host.id
 		this.gameMode = gameMode
 		this.lobbyType = lobbyType
+		this.accessMode = accessMode
 		this.options = getDefaultLobbyOptions(lobbyType)
 		this.attachFreshClient(host, { isOwner: true })
 	}
@@ -159,6 +171,59 @@ class Lobby {
 
 	getDisconnectedSlots = (): DisconnectedSlot[] =>
 		Array.from(this.disconnectedSlots.values())
+
+	addPendingJoinRequest = (client: Client): PendingLobbyJoinRequest => {
+		const existingRequest = this.findPendingJoinRequestForClient(client.id)
+		if (existingRequest) {
+			return existingRequest
+		}
+
+		let requestId = randomBytes(8).toString('hex')
+		while (this.pendingJoinRequests.has(requestId)) {
+			requestId = randomBytes(8).toString('hex')
+		}
+
+		const request = {
+			requestId,
+			client,
+			createdAt: Date.now(),
+		}
+		this.pendingJoinRequests.set(requestId, request)
+		return request
+	}
+
+	getPendingJoinRequest = (
+		requestId: string,
+	): PendingLobbyJoinRequest | undefined =>
+		this.pendingJoinRequests.get(requestId)
+
+	deletePendingJoinRequest = (requestId: string): boolean =>
+		this.pendingJoinRequests.delete(requestId)
+
+	findPendingJoinRequestForClient = (
+		clientId: string,
+	): PendingLobbyJoinRequest | undefined => {
+		for (const request of this.pendingJoinRequests.values()) {
+			if (request.client.id === clientId) {
+				return request
+			}
+		}
+		return undefined
+	}
+
+	deletePendingJoinRequestsForClient = (clientId: string): boolean => {
+		let deleted = false
+		for (const request of this.pendingJoinRequests.values()) {
+			if (request.client.id === clientId) {
+				this.pendingJoinRequests.delete(request.requestId)
+				deleted = true
+			}
+		}
+		return deleted
+	}
+
+	getPendingJoinRequests = (): PendingLobbyJoinRequest[] =>
+		Array.from(this.pendingJoinRequests.values())
 }
 
 export default Lobby

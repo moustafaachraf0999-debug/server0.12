@@ -4,14 +4,20 @@ import type {
 	ActionJoinLobby,
 	ActionKickPlayer,
 	ActionMakePlayerHost,
+	ActionRespondToLobbyJoinRequest,
 	ActionSetLobbyType,
 	ActionSetTeam,
 	ActionSetTeamLock,
 } from '../../../actions.js'
 import {
+	requestLobbyListAction,
+	respondToLobbyJoinRequestAction,
+} from '../../../lobbyAccessHandlers.js'
+import {
 	createLobbyAction,
 	joinLobbyAction,
 } from '../../../lobbyEntryHandlers.js'
+import { isValidLobbyAccessMode } from '../../../lobbyAccess.js'
 import {
 	kickPlayerAction,
 	leaveLobbyAction,
@@ -27,6 +33,7 @@ import { PROTOCOL_V2_SCHEMA_IDS } from '../schemaIds.js'
 import {
 	MAX_GAME_MODE_LENGTH,
 	MAX_LOBBY_CODE_LENGTH,
+	MAX_LOBBY_REQUEST_ID_LENGTH,
 	MAX_LOBBY_TYPE_LENGTH,
 	MAX_PLAYER_ID_LENGTH,
 } from './limits.js'
@@ -50,13 +57,27 @@ const validateCreateLobbyPayload: ProtocolPayloadValidator<
 	isRecordPayload(payload) &&
 	hasStringWithinLength(payload, 'gameMode', MAX_GAME_MODE_LENGTH) &&
 	hasStringWithinLength(payload, 'lobbyType', MAX_LOBBY_TYPE_LENGTH) &&
-	hasOptionalLobbyOptionsWirePayload(payload, 'options')
+	hasOptionalLobbyOptionsWirePayload(payload, 'options') &&
+	(payload.accessMode === undefined || isValidLobbyAccessMode(payload.accessMode))
 
 const validateJoinLobbyPayload: ProtocolPayloadValidator<
 	ActionHandlerArgs<ActionJoinLobby>
 > = (payload: unknown): payload is ActionHandlerArgs<ActionJoinLobby> =>
 	isRecordPayload(payload) &&
 	hasNonEmptyStringWithinLength(payload, 'code', MAX_LOBBY_CODE_LENGTH)
+
+const validateRespondToLobbyJoinRequestPayload: ProtocolPayloadValidator<
+	ActionHandlerArgs<ActionRespondToLobbyJoinRequest>
+> = (
+	payload: unknown,
+): payload is ActionHandlerArgs<ActionRespondToLobbyJoinRequest> =>
+	isRecordPayload(payload) &&
+	hasNonEmptyStringWithinLength(
+		payload,
+		'requestId',
+		MAX_LOBBY_REQUEST_ID_LENGTH,
+	) &&
+	hasBoolean(payload, 'accepted')
 
 const validatePlayerTargetPayload: ProtocolPayloadValidator<
 	ActionHandlerArgs<ActionKickPlayer | ActionMakePlayerHost>
@@ -103,6 +124,20 @@ export const LOBBY_INCOMING_PROTOCOL_ROUTE_ENTRIES: readonly IncomingProtocolV2R
 			'lobby.join',
 			validateJoinLobbyPayload,
 			() => joinLobbyAction,
+		),
+		clientIncomingRoute(
+			'lobby',
+			'list',
+			PROTOCOL_V2_SCHEMA_IDS.lobbyIntent,
+			() => requestLobbyListAction,
+		),
+		validatedIncomingRoute<ActionHandlerArgs<ActionRespondToLobbyJoinRequest>>(
+			'lobby',
+			'respondJoinRequest',
+			PROTOCOL_V2_SCHEMA_IDS.lobbyIntent,
+			'lobby.respondJoinRequest',
+			validateRespondToLobbyJoinRequestPayload,
+			() => respondToLobbyJoinRequestAction,
 		),
 		clientIncomingRoute(
 			'lobby',

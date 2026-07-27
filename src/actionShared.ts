@@ -1,5 +1,8 @@
+import type { LobbyType } from './lobbyTypes.js'
+
 export type GameMode = 'attrition' | 'showdown' | 'survival' | 'coop'
 export type { LobbyType } from './lobbyTypes.js'
+export type LobbyAccessMode = 'public' | 'ask_first' | 'private'
 export type BlindRow = 'Small' | 'Big' | 'Boss'
 export type BlindKind = 'small' | 'big' | 'boss' | 'pvp'
 
@@ -32,4 +35,25 @@ export type LobbyPlayerWirePayload = {
 export type LobbyNemesisAssignmentWirePayload = {
 	playerId: string
 	nemesisPlayerId?: string
+}
+
+export type LobbyBrowserEntryWirePayload = {
+	code: string
+	ownerUsername: string
+	playerCount: number
+	maxPlayers: number
+	gameMode: GameMode
+	lobbyType: LobbyType
+	accessMode: Exclude<LobbyAccessMode, 'private'>
+	ruleset?: string
+	isInGame: boolean
+}
+
+export type LobbyJoinRequestWirePayload = {
+	requestId: string
+	playerId: string
+	username: string
+	blindCol: number
+	modHash: string
+	isCached: boolean
 }

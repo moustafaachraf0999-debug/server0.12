@@ -10,6 +10,10 @@ import {
 export const LOBBY_SERVER_ROUTES = [
 	['joinedLobby', 'joined'],
 	['rejoinedLobby', 'rejoined'],
+	['lobbyList', 'list'],
+	['lobbyJoinRequestReceived', 'joinRequest'],
+	['lobbyJoinRequestPending', 'joinPending'],
+	['lobbyJoinRequestRejected', 'joinRejected'],
 	['lobbyInfo', 'snapshot'],
 	['lobbyPlayerJoined', 'playerJoined'],
 	['lobbyPlayerUpdated', 'playerUpdated'],
@@ -27,6 +31,8 @@ export const LOBBY_ROUTE_ENTRIES: readonly ActionRouteEntry[] = [
 	...actionRoutes('lobby', PROTOCOL_V2_SCHEMA_IDS.lobbyIntent, clientIntent, [
 		['createLobby', 'create'],
 		['joinLobby', 'join'],
+		['requestLobbyList', 'list'],
+		['respondToLobbyJoinRequest', 'respondJoinRequest'],
 		['leaveLobby', 'leave'],
 		['kickPlayer', 'kick'],
 		['makePlayerHost', 'makeHost'],

@@ -1,5 +1,7 @@
 import type {
 	GameMode,
+	LobbyBrowserEntryWirePayload,
+	LobbyJoinRequestWirePayload,
 	LobbyNemesisAssignmentWirePayload,
 	LobbyOptionsWirePayload,
 	LobbyPlayerWirePayload,
@@ -28,6 +30,23 @@ export type ActionJoinedLobby = {
 	isHost: boolean
 	isInGame: boolean
 	isCoopSaveRestore?: boolean
+}
+export type ActionLobbyList = {
+	action: 'lobbyList'
+	lobbies: LobbyBrowserEntryWirePayload[]
+}
+export type ActionLobbyJoinRequestReceived = {
+	action: 'lobbyJoinRequestReceived'
+	request: LobbyJoinRequestWirePayload
+}
+export type ActionLobbyJoinRequestPending = {
+	action: 'lobbyJoinRequestPending'
+	code: string
+}
+export type ActionLobbyJoinRequestRejected = {
+	action: 'lobbyJoinRequestRejected'
+	code: string
+	message: string
 }
 export type ActionRejoinedLobby = {
 	action: 'rejoinedLobby'
@@ -108,6 +127,10 @@ export type ActionServerLobby =
 	| ActionError
 	| ActionKickedFromLobby
 	| ActionJoinedLobby
+	| ActionLobbyList
+	| ActionLobbyJoinRequestReceived
+	| ActionLobbyJoinRequestPending
+	| ActionLobbyJoinRequestRejected
 	| ActionRejoinedLobby
 	| ActionEnemyDisconnected
 	| ActionEnemyReconnected

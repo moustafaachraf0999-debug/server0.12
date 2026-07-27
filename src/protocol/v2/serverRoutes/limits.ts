@@ -10,6 +10,7 @@ export const MAX_GAME_MODE_LENGTH = 64
 export const MAX_HAND_KEY_LENGTH = 512
 export const MAX_HAND_LEVEL_LENGTH = 4096
 export const MAX_LOBBY_CODE_LENGTH = 64
+export const MAX_LOBBY_REQUEST_ID_LENGTH = 128
 export const MAX_LOBBY_TYPE_LENGTH = 64
 export const MAX_LOCATION_LENGTH = 128
 export const MAX_MOD_ACTION_FIELD_LENGTH = 512

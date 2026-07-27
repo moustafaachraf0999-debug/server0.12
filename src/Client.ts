@@ -30,6 +30,7 @@ class Client {
 	isOwner = false
 	isReady = false
 	firstReady = false
+	pvpReadyAt: number | null = null
 	coopBlindActive = false
 	skipReadyBlindRow: 'Small' | 'Big' | null = null
 	skipReadyBlindAnte: number | null = null

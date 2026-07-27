@@ -96,6 +96,15 @@ const normalizePositiveInteger = (
 	return Math.max(1, Math.trunc(value))
 }
 
+const normalizeCustomWinnerPercent = (
+	value: string | number | boolean | undefined,
+) => {
+	if (typeof value !== 'number' || !Number.isFinite(value)) {
+		return 0
+	}
+	return Math.max(0, Math.min(100, Math.trunc(value)))
+}
+
 const getConfiguredMaxPlayers = (lobby: Lobby) =>
 	normalizePositiveInteger(
 		lobby.options.max_players,
@@ -133,12 +142,28 @@ const applyDerivedCustomWinnerOptions = (
 		normalizedOptions,
 		'pvp_custom_winners',
 	)
+	const customWinnersPercentSent = hasNormalizedOption(
+		normalizedOptions,
+		'pvp_custom_winners_percent',
+	)
+
+	if (customWinnersPercentSent) {
+		const normalizedPercent = normalizeCustomWinnerPercent(
+			normalizedOptions.pvp_custom_winners_percent,
+		)
+		lobby.setOption('pvp_custom_winners_percent', normalizedPercent)
+		normalizedOptions.pvp_custom_winners_percent = normalizedPercent
+	}
 
 	if (customWinnersSent) {
 		const rawWinnerCount = normalizePositiveInteger(
 			normalizedOptions.pvp_custom_winners,
 			getDefaultCustomWinnerCount(maxPlayers),
 		)
+		if (!customWinnersPercentSent) {
+			lobby.setOption('pvp_custom_winners_percent', 0)
+			normalizedOptions.pvp_custom_winners_percent = 0
+		}
 		setDerivedCustomWinners(
 			lobby,
 			normalizedOptions,

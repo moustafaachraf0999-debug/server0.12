@@ -1,15 +1,23 @@
 import type Lobby from './Lobby.js'
 import type Client from './Client.js'
 import type {
+	ActionLobbyJoinRequestPending,
+	ActionLobbyJoinRequestReceived,
+	ActionLobbyJoinRequestRejected,
+	ActionLobbyList,
 	ActionLobbyNemesisAssignments,
 	ActionLobbyPlayerJoined,
 	ActionLobbyPlayerLeft,
 	ActionLobbyPlayerUpdated,
 	ActionLobbyTypeChanged,
+	LobbyBrowserEntryWirePayload,
+	LobbyJoinRequestWirePayload,
 	ActionServerToClient,
 	LobbyTypeChangedPlayerWirePayload,
 } from './actions.js'
 import { getLobbyActivePlayers } from './lobbyPlayerState/queries.js'
+import { isListedLobbyAccessMode } from './lobbyAccess.js'
+import { getLobbyMaxPlayers } from './lobbyRules.js'
 import {
 	buildJoinedLobbyAction,
 	buildLobbyInfoAction,
@@ -80,6 +88,84 @@ const broadcastLobbyPlayerJoined = (
 			sendLobbyServerAction(player, action)
 		}
 	}
+}
+
+export const buildLobbyBrowserEntry = (
+	lobby: Lobby,
+): LobbyBrowserEntryWirePayload | null => {
+	if (!isListedLobbyAccessMode(lobby.accessMode)) {
+		return null
+	}
+
+	const owner = lobby.getPlayer(lobby.ownerId) ?? lobby.getFirstPlayer()
+	const ruleset = lobby.options.ruleset
+	const maxPlayers = getLobbyMaxPlayers(lobby)
+	return {
+		code: lobby.code,
+		ownerUsername: owner?.username ?? 'Guest',
+		playerCount: lobby.getPlayerCount(),
+		maxPlayers,
+		gameMode: lobby.gameMode,
+		lobbyType: lobby.lobbyType,
+		accessMode: lobby.accessMode,
+		ruleset: typeof ruleset === 'string' ? ruleset : undefined,
+		isInGame: lobby.isInGame,
+	}
+}
+
+export const sendLobbyList = (
+	client: Client,
+	lobbies: LobbyBrowserEntryWirePayload[],
+) => {
+	sendLobbyServerAction(client, {
+		action: 'lobbyList',
+		lobbies,
+	} satisfies ActionLobbyList)
+}
+
+export const buildLobbyJoinRequest = (
+	requestId: string,
+	client: Client,
+): LobbyJoinRequestWirePayload => ({
+	requestId,
+	playerId: client.id,
+	username: client.username,
+	blindCol: client.blindCol,
+	modHash: client.modHash,
+	isCached: client.isCached,
+})
+
+export const sendLobbyJoinRequestReceived = (
+	owner: Client,
+	requestId: string,
+	requester: Client,
+) => {
+	sendLobbyServerAction(owner, {
+		action: 'lobbyJoinRequestReceived',
+		request: buildLobbyJoinRequest(requestId, requester),
+	} satisfies ActionLobbyJoinRequestReceived)
+}
+
+export const sendLobbyJoinRequestPending = (
+	client: Client,
+	code: string,
+) => {
+	sendLobbyServerAction(client, {
+		action: 'lobbyJoinRequestPending',
+		code,
+	} satisfies ActionLobbyJoinRequestPending)
+}
+
+export const sendLobbyJoinRequestRejected = (
+	client: Client,
+	code: string,
+	message: string,
+) => {
+	sendLobbyServerAction(client, {
+		action: 'lobbyJoinRequestRejected',
+		code,
+		message,
+	} satisfies ActionLobbyJoinRequestRejected)
 }
 
 export const broadcastLobbyPlayerUpdated = (

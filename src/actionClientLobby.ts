@@ -1,5 +1,6 @@
 import type {
 	GameMode,
+	LobbyAccessMode,
 	LobbyOptionsWirePayload,
 	LobbyType,
 } from './actionShared.js'
@@ -16,8 +17,15 @@ export type ActionCreateLobby = {
 	gameMode: GameMode
 	lobbyType: LobbyType
 	options?: LobbyOptionsWirePayload
+	accessMode?: LobbyAccessMode
 }
 export type ActionJoinLobby = { action: 'joinLobby'; code: string }
+export type ActionRequestLobbyList = { action: 'requestLobbyList' }
+export type ActionRespondToLobbyJoinRequest = {
+	action: 'respondToLobbyJoinRequest'
+	requestId: string
+	accepted: boolean
+}
 export type ActionLeaveLobby = { action: 'leaveLobby' }
 export type ActionReturnToLobby = { action: 'returnToLobby' }
 export type ActionKickPlayer = { action: 'kickPlayer'; playerId: string }
@@ -57,6 +65,8 @@ export type ActionClientLobby =
 	| ActionUsername
 	| ActionCreateLobby
 	| ActionJoinLobby
+	| ActionRequestLobbyList
+	| ActionRespondToLobbyJoinRequest
 	| ActionLeaveLobby
 	| ActionReturnToLobby
 	| ActionKickPlayer

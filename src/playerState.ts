@@ -15,6 +15,7 @@ export const clearPendingBlindReadyState = (player: Client) => {
 	player.readyBlindKind = null
 	player.readyBlindHandsLeft = null
 	player.readyBlindTarget = null
+	player.pvpReadyAt = null
 	player.skipReadyBlindRow = null
 	player.skipReadyBlindAnte = null
 }

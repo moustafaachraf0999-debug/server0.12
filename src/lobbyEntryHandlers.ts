@@ -6,7 +6,15 @@ import type {
 	ActionJoinLobby,
 	ActionRejoinLobby,
 } from './actions.js'
-import { sendInitialLobbyJoinedState } from './lobbyBroadcasts.js'
+import {
+	DEFAULT_LOBBY_ACCESS_MODE,
+	isValidLobbyAccessMode,
+} from './lobbyAccess.js'
+import {
+	sendInitialLobbyJoinedState,
+	sendLobbyJoinRequestPending,
+	sendLobbyJoinRequestReceived,
+} from './lobbyBroadcasts.js'
 import { refreshLobbyNemesisAssignmentsForLobby } from './lobbyNemesis.js'
 import { applyLobbyOptions } from './lobbyOptionUpdates.js'
 import { sendLobbyMatchStateToPlayer } from './lobbyPlayerState/broadcasts.js'
@@ -38,25 +46,32 @@ import { isSharedSyncOptionEnabled } from './sharedSyncGroups.js'
 import { isValidGameMode } from './gameModes.js'
 import { canClientJoinCoopSaveLobby } from './coopSaveHandlers.js'
 
-const joinLobbyClient = (lobby: Lobby, client: Client) => {
+export const getLobbyJoinBlockMessage = (
+	lobby: Lobby,
+	client: Client,
+): string | null => {
 	if (lobby.isInGame) {
-		sendSystemError(client, 'The match has already started.')
-		return false
+		return 'The match has already started.'
 	}
 
 	if (!canClientJoinCoopSaveLobby(lobby, client)) {
-		sendSystemError(client, 'This saved co-op lobby belongs to different players.')
-		return false
+		return 'This saved co-op lobby belongs to different players.'
 	}
 
 	const maxPlayers = getLobbyMaxPlayers(lobby)
 	if (lobby.getPlayerCount() >= maxPlayers) {
-		sendSystemError(
-			client,
-			isHeadToHeadLobbyType(lobby.lobbyType)
-				? '1v1 lobby is full (2 players max).'
-				: `Lobby is full (${maxPlayers} players max)`,
-		)
+		return isHeadToHeadLobbyType(lobby.lobbyType)
+			? '1v1 lobby is full (2 players max).'
+			: `Lobby is full (${maxPlayers} players max)`
+	}
+
+	return null
+}
+
+export const joinLobbyClient = (lobby: Lobby, client: Client) => {
+	const blockMessage = getLobbyJoinBlockMessage(lobby, client)
+	if (blockMessage) {
+		sendSystemError(client, blockMessage)
 		return false
 	}
 
@@ -69,7 +84,7 @@ const joinLobbyClient = (lobby: Lobby, client: Client) => {
 	return true
 }
 
-const syncJoinedLobbyClientState = (client: Client) => {
+export const syncJoinedLobbyClientState = (client: Client) => {
 	syncTeamDeckForClient(client)
 	syncTeamHandLevelsForClient(client)
 
@@ -98,7 +113,7 @@ const withCreateOptionDefaultsForGameMode = (
 }
 
 export const createLobbyAction = (
-	{ gameMode, lobbyType, options }: ActionHandlerArgs<ActionCreateLobby>,
+	{ gameMode, lobbyType, options, accessMode }: ActionHandlerArgs<ActionCreateLobby>,
 	client: Client,
 ) => {
 	if (!isValidGameMode(gameMode)) {
@@ -116,8 +131,18 @@ export const createLobbyAction = (
 		return
 	}
 
+	if (accessMode !== undefined && !isValidLobbyAccessMode(accessMode)) {
+		sendSystemError(client, 'Invalid lobby access mode.')
+		return
+	}
+
 	const resolvedLobbyType = getLobbyTypeForGameMode(gameMode, lobbyType)
-	const lobby = new Lobby(client, gameMode, resolvedLobbyType)
+	const lobby = new Lobby(
+		client,
+		gameMode,
+		resolvedLobbyType,
+		accessMode ?? DEFAULT_LOBBY_ACCESS_MODE,
+	)
 	recordLobbyCreated(lobby, client)
 	const creationOptions = withCreateOptionDefaultsForGameMode(gameMode, options)
 	applyLobbyOptions(
@@ -139,6 +164,22 @@ export const joinLobbyAction = (
 	const newLobby = getLobbyByCode(code)
 	if (!newLobby) {
 		sendSystemError(client, 'Lobby does not exist.')
+		return
+	}
+
+	if (newLobby.accessMode === 'ask_first') {
+		const blockMessage = getLobbyJoinBlockMessage(newLobby, client)
+		if (blockMessage) {
+			sendSystemError(client, blockMessage)
+			return
+		}
+
+		const request = newLobby.addPendingJoinRequest(client)
+		const owner = newLobby.getPlayer(newLobby.ownerId)
+		if (owner) {
+			sendLobbyJoinRequestReceived(owner, request.requestId, client)
+		}
+		sendLobbyJoinRequestPending(client, newLobby.code)
 		return
 	}
 

@@ -56,6 +56,59 @@ const getReadyBlindStates = (players: Client[]) =>
 		]),
 	)
 
+const setPvpReadyTimestamp = (
+	player: Client,
+	blindKind: BlindKind,
+	now: number,
+) => {
+	player.pvpReadyAt = blindKind === 'pvp' ? now : null
+}
+
+const getActivePlayersById = (players: Client[]) =>
+	new Map(players.map((player) => [player.id, player]))
+
+const getReadyNemesis = (
+	player: Client,
+	activePlayersById: Map<string, Client>,
+) => {
+	const nemesisPlayerId = player.nemesisPlayerId
+	if (!nemesisPlayerId) {
+		return null
+	}
+
+	const nemesis = activePlayersById.get(nemesisPlayerId)
+	return nemesis && isPlayerReadyForPvpBlind(nemesis) ? nemesis : null
+}
+
+const readyWithinSpeedrunWindow = (player: Client, nemesis: Client) => {
+	if (player.pvpReadyAt == null || nemesis.pvpReadyAt == null) {
+		return false
+	}
+
+	return (
+		Math.abs(player.pvpReadyAt - nemesis.pvpReadyAt) <=
+		SPEEDRUN_REWARD_WINDOW_MS
+	)
+}
+
+const awardNemesisSpeedrunRewards = (activePlayers: Client[]) => {
+	const activePlayersById = getActivePlayersById(activePlayers)
+
+	for (const player of activePlayers) {
+		if (player.firstReady || !isPlayerReadyForPvpBlind(player)) {
+			continue
+		}
+
+		const nemesis = getReadyNemesis(player, activePlayersById)
+		if (!nemesis || !readyWithinSpeedrunWindow(player, nemesis)) {
+			continue
+		}
+
+		markPlayerFirstReadyForBlind(player)
+		sendMatchServerAction(player, { action: 'speedrun' })
+	}
+}
+
 const buildStartBlindAction = (
 	lobby: NonNullable<Client['lobby']>,
 	player: Client,
@@ -106,14 +159,7 @@ const broadcastGlobalBlindStart = (lobby: Client['lobby']) => {
 	const readyBlindStates = getReadyBlindStates(activePlayers)
 	resetLobbyAnteTimer(lobby)
 
-	const firstReadyAt = lobby.firstReadyAt
-	if (firstReadyAt && Date.now() - firstReadyAt <= SPEEDRUN_REWARD_WINDOW_MS) {
-		for (const player of activePlayers) {
-			if (!player.firstReady) {
-				sendMatchServerAction(player, { action: 'speedrun' })
-			}
-		}
-	}
+	awardNemesisSpeedrunRewards(activePlayers)
 	lobby.firstReadyAt = null
 
 	resetPlayersForStartedBlind(activePlayers)
@@ -263,6 +309,7 @@ export const readyBlindAction = (
 		handsLeft,
 		blindTarget,
 	})
+	setPvpReadyTimestamp(client, normalizedBlindKind, Date.now())
 	ensureDuelRound(lobby)
 
 	const allReady = blindReadySatisfied(
@@ -271,19 +318,8 @@ export const readyBlindAction = (
 		normalizedBlindRow,
 		normalizedBlindKind,
 	)
-	const isGroupedLobby = Boolean(lobbyUsesSharedSyncGroup(lobby))
-	const activeEnemies = getLobbyActivePlayers(lobby).filter(
-		(player) => player.id !== client.id,
-	)
-
-	if (
-		!isGroupedLobby &&
-		!client.firstReady &&
-		activeEnemies.every((enemy) => !enemy.isReady && !enemy.firstReady)
-	) {
-		markPlayerFirstReadyForBlind(client)
-		lobby.firstReadyAt = Date.now()
-		sendMatchServerAction(client, { action: 'speedrun' })
+	if (normalizedBlindKind === 'pvp') {
+		awardNemesisSpeedrunRewards(getLobbyActivePlayers(lobby))
 	}
 
 	if (!allReady) {

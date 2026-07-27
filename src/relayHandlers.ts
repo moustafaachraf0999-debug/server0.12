@@ -3,6 +3,7 @@ import type {
 	ActionAsteroid,
 	ActionEatPizza,
 	ActionHandlerArgs,
+	ActionMagnet,
 	ActionLetsGoGamblingNemesis,
 	ActionMagnetResponse,
 	ActionRemovePhantom,
@@ -19,6 +20,7 @@ type RelayedFeatureAction =
 	| ActionAsteroid
 	| ActionLetsGoGamblingNemesis
 	| ActionEatPizza
+	| ActionMagnet
 	| ActionSoldJoker
 	| ActionSpentLastShop
 
@@ -33,11 +35,23 @@ const relayToEnemies = (
 	}
 }
 
+const relayToNemesis = (
+	client: Client,
+	createAction: (playerId: string) => RelayedFeatureAction,
+) => {
+	const [, enemies] = getEnemies(client)
+	const nemesis = enemies.find((enemy) => enemy.id === client.nemesisPlayerId)
+
+	if (!nemesis) return
+
+	sendFeatureServerAction(nemesis, createAction(client.id))
+}
+
 export const sendPhantomAction = (
 	{ key }: ActionHandlerArgs<ActionSendPhantom>,
 	client: Client,
 ) => {
-	relayToEnemies(client, (playerId) => ({
+	relayToNemesis(client, (playerId) => ({
 		action: 'sendPhantom',
 		key,
 		playerId,
@@ -56,14 +70,14 @@ export const removePhantomAction = (
 }
 
 export const asteroidAction = (client: Client) => {
-	relayToEnemies(client, (playerId) => ({
+	relayToNemesis(client, (playerId) => ({
 		action: 'asteroid',
 		playerId,
 	}))
 }
 
 export const letsGoGamblingNemesisAction = (client: Client) => {
-	relayToEnemies(client, (playerId) => ({
+	relayToNemesis(client, (playerId) => ({
 		action: 'letsGoGamblingNemesis',
 		playerId,
 	}))
@@ -73,7 +87,7 @@ export const eatPizzaAction = (
 	{ whole }: ActionHandlerArgs<ActionEatPizza>,
 	client: Client,
 ) => {
-	relayToEnemies(client, (playerId) => ({
+	relayToNemesis(client, (playerId) => ({
 		action: 'eatPizza',
 		whole,
 		playerId,
@@ -99,11 +113,7 @@ export const spentLastShopAction = (
 }
 
 export const magnetAction = (client: Client) => {
-	const [, enemies] = getEnemies(client)
-
-	if (enemies[0]) {
-		sendFeatureServerAction(enemies[0], { action: 'magnet' })
-	}
+	relayToNemesis(client, () => ({ action: 'magnet' }))
 }
 
 export const magnetResponseAction = (
