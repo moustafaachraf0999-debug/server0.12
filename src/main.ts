@@ -7,6 +7,12 @@ import {
 	type MonitorDashboardServer,
 } from './monitor/monitorDashboard.js'
 import {
+	isIpBanned,
+	normalizeIpAddress,
+	recordPlayerConnection,
+	recordPlayerDisconnected,
+} from './playerDirectory.js'
+import {
 	sendSystemConnected,
 	sendSystemRequestVersion,
 } from './protocol/v2/index.js'
@@ -40,16 +46,37 @@ interface BigIntWithToJSON {
 	return this.toString()
 }
 
-const handleGameplaySocketConnection = createSocketConnectionHandler({
+const gameplaySocketConnectionHandler = createSocketConnectionHandler({
+	onClientSocketReady: (client, controls) => {
+		recordPlayerConnection(client, controls)
+	},
 	onConnected: (client) => {
 		sendSystemConnected(client)
 		sendSystemRequestVersion(client)
 	},
 	onDisconnected: (client) => {
+		recordPlayerDisconnected(client)
 		disconnectFromLobbyAction(client)
 	},
 	onMessage: handleIncomingSocketMessage,
 })
+
+const handleGameplaySocketConnection = (socket: Socket) => {
+	const ip = normalizeIpAddress(socket.remoteAddress)
+	if (isIpBanned(ip)) {
+		console.warn(`Rejected banned IP ${ip}.`)
+		traceServerEvent('socket.rejected_banned_ip', {
+			remoteAddress: ip,
+			remotePort: socket.remotePort,
+			localAddress: socket.localAddress,
+			localPort: socket.localPort,
+		})
+		socket.end()
+		return
+	}
+
+	gameplaySocketConnectionHandler(socket)
+}
 
 const monitorDashboard = createMonitorDashboardServer()
 const monitorSharesGameplayPort =

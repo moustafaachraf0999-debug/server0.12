@@ -24,6 +24,8 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+data/ip_bans.json
+data/player_directory.json
 logs/
 *.log
 

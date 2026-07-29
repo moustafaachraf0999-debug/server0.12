@@ -24,14 +24,22 @@ type SocketConnectionError = Error & {
 	syscall?: string
 }
 
-type SocketDisconnectReason = 'end' | 'error' | 'input_limit'
+type SocketDisconnectReason = 'end' | 'error' | 'input_limit' | 'banned'
 
 interface SocketDisconnectContext {
 	reason: SocketDisconnectReason
 	error?: SocketConnectionError
 }
 
+export interface SocketClientControls {
+	disconnect: () => void
+}
+
 interface SocketConnectionLifecycle {
+	onClientSocketReady?: (
+		client: Client,
+		controls: SocketClientControls,
+	) => void
 	onConnected?: (client: Client) => void
 	onDisconnected?: (client: Client, context: SocketDisconnectContext) => void
 	onMessage?: (rawMessage: string, client: Client) => void
@@ -62,6 +70,7 @@ const buildSocketTraceFields = (socket: Socket, client: Client) => ({
 
 export const createSocketConnectionHandler =
 	({
+		onClientSocketReady,
 		onConnected,
 		onDisconnected,
 		onMessage,
@@ -78,11 +87,12 @@ export const createSocketConnectionHandler =
 		const getClientLogContext = () => ({ clientId: client.id })
 		client = new Client(
 			socket.address(),
+			socket.remoteAddress ?? 'unknown',
+			socket.remotePort,
 			createSocketActionSender(socket, getClientLogContext),
 			createSocketProtocolV2Sender(socket, getClientLogContext),
 		)
 		traceServerEvent('socket.connected', buildSocketTraceFields(socket, client))
-		onConnected?.(client)
 
 		// Buffer for incomplete TCP messages
 		let dataBuffer = ''
@@ -113,6 +123,8 @@ export const createSocketConnectionHandler =
 						error?.message ?? 'incoming message exceeded the size limit'
 					}`,
 				)
+			} else if (reason === 'banned') {
+				console.warn(`Closing banned client ${client.id}.`)
 			} else if (isExpectedSocketDisconnectError(error)) {
 				console.warn(
 					`Expected socket disconnect for client ${client.id} (${error?.code}).`,
@@ -129,6 +141,14 @@ export const createSocketConnectionHandler =
 			})
 			onDisconnected?.(client, { reason, error })
 		}
+
+		onClientSocketReady?.(client, {
+			disconnect: () => {
+				socket.end()
+				disconnectClient('banned')
+			},
+		})
+		onConnected?.(client)
 
 		const closeForInputLimit = (message: string) => {
 			traceServerEvent('socket.input_limit', {

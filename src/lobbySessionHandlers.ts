@@ -2,6 +2,7 @@ import type Client from './Client.js'
 import type { ActionHandlerArgs, ActionUsername } from './actions.js'
 import { broadcastLobbyPlayerUpdated } from './lobbyBroadcasts.js'
 import { lobbyRequiresReady } from './lobbyRules.js'
+import { recordPlayerName } from './playerDirectory.js'
 import { sendUtilityServerAction } from './protocol/v2/serverSend.js'
 
 export const usernameAction = (
@@ -9,6 +10,7 @@ export const usernameAction = (
 	client: Client,
 ) => {
 	client.username = username
+	recordPlayerName(client, username)
 	const numericBlindCol = Number(blindCol)
 	client.blindCol = Number.isFinite(numericBlindCol)
 		? Math.max(1, Math.min(25, Math.floor(numericBlindCol)))

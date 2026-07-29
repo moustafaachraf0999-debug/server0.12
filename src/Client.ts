@@ -14,6 +14,8 @@ type SendProtocolV2Fn = (envelope: ProtocolV2Envelope) => void
 class Client {
 	id: string = uuidv4()
 	address: ClientAddress
+	remoteAddress: string
+	remotePort: number | undefined
 	sendAction: SendFn
 	sendProtocolV2: SendProtocolV2Fn
 	reconnectToken = randomBytes(16).toString('hex')
@@ -56,10 +58,14 @@ class Client {
 
 	constructor(
 		address: ClientAddress,
+		remoteAddress: string,
+		remotePort: number | undefined,
 		send: SendFn,
 		sendProtocolV2: SendProtocolV2Fn,
 	) {
 		this.address = address
+		this.remoteAddress = remoteAddress
+		this.remotePort = remotePort
 		this.sendAction = send
 		this.sendProtocolV2 = sendProtocolV2
 	}

@@ -1,4 +1,5 @@
 import type {
+	ActionCancelLobbyJoinRequest,
 	ActionCreateLobby,
 	ActionHandlerArgs,
 	ActionJoinLobby,
@@ -10,6 +11,7 @@ import type {
 	ActionSetTeamLock,
 } from '../../../actions.js'
 import {
+	cancelLobbyJoinRequestAction,
 	requestLobbyListAction,
 	respondToLobbyJoinRequestAction,
 } from '../../../lobbyAccessHandlers.js'
@@ -77,7 +79,20 @@ const validateRespondToLobbyJoinRequestPayload: ProtocolPayloadValidator<
 		'requestId',
 		MAX_LOBBY_REQUEST_ID_LENGTH,
 	) &&
-	hasBoolean(payload, 'accepted')
+	hasBoolean(payload, 'accepted') &&
+	(payload.blocked === undefined || hasBoolean(payload, 'blocked'))
+
+const validateCancelLobbyJoinRequestPayload: ProtocolPayloadValidator<
+	ActionHandlerArgs<ActionCancelLobbyJoinRequest>
+> = (
+	payload: unknown,
+): payload is ActionHandlerArgs<ActionCancelLobbyJoinRequest> =>
+	isRecordPayload(payload) &&
+	hasNonEmptyStringWithinLength(
+		payload,
+		'requestId',
+		MAX_LOBBY_REQUEST_ID_LENGTH,
+	)
 
 const validatePlayerTargetPayload: ProtocolPayloadValidator<
 	ActionHandlerArgs<ActionKickPlayer | ActionMakePlayerHost>
@@ -130,6 +145,14 @@ export const LOBBY_INCOMING_PROTOCOL_ROUTE_ENTRIES: readonly IncomingProtocolV2R
 			'list',
 			PROTOCOL_V2_SCHEMA_IDS.lobbyIntent,
 			() => requestLobbyListAction,
+		),
+		validatedIncomingRoute<ActionHandlerArgs<ActionCancelLobbyJoinRequest>>(
+			'lobby',
+			'cancelJoinRequest',
+			PROTOCOL_V2_SCHEMA_IDS.lobbyIntent,
+			'lobby.cancelJoinRequest',
+			validateCancelLobbyJoinRequestPayload,
+			() => cancelLobbyJoinRequestAction,
 		),
 		validatedIncomingRoute<ActionHandlerArgs<ActionRespondToLobbyJoinRequest>>(
 			'lobby',

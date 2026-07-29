@@ -1,15 +1,18 @@
 import type Client from './Client.js'
 import type {
+	ActionCancelLobbyJoinRequest,
 	ActionHandlerArgs,
 	ActionRespondToLobbyJoinRequest,
 	LobbyBrowserEntryWirePayload,
 } from './actions.js'
 import {
 	buildLobbyBrowserEntry,
+	sendLobbyJoinRequestClosed,
 	sendLobbyJoinRequestRejected,
 	sendLobbyList,
 } from './lobbyBroadcasts.js'
 import {
+	LOBBY_JOIN_REQUEST_COOLDOWN_MS,
 	getLobbyJoinBlockMessage,
 	joinLobbyClient,
 	syncJoinedLobbyClientState,
@@ -42,8 +45,37 @@ export const requestLobbyListAction = (client: Client) => {
 	sendLobbyList(client, buildBrowsableLobbyEntries())
 }
 
+export const cancelLobbyJoinRequestAction = (
+	{ requestId }: ActionHandlerArgs<ActionCancelLobbyJoinRequest>,
+	client: Client,
+) => {
+	for (const lobby of Lobbies.values()) {
+		const request = lobby.getPendingJoinRequest(requestId)
+		if (!request || request.client.id !== client.id) {
+			continue
+		}
+
+		lobby.deletePendingJoinRequest(requestId)
+		lobby.setJoinRequestCooldown(request.client, LOBBY_JOIN_REQUEST_COOLDOWN_MS)
+		const owner = lobby.getPlayer(lobby.ownerId)
+		if (owner) {
+			sendLobbyJoinRequestClosed(owner, lobby.code, requestId, 'cancelled')
+		}
+		recordLobbyEvent(
+			lobby,
+			'join_request.cancelled',
+			`${client.username} cancelled their join request`,
+			{
+				player: client,
+				details: { requestId },
+			},
+		)
+		return
+	}
+}
+
 export const respondToLobbyJoinRequestAction = (
-	{ requestId, accepted }: ActionHandlerArgs<ActionRespondToLobbyJoinRequest>,
+	{ requestId, accepted, blocked }: ActionHandlerArgs<ActionRespondToLobbyJoinRequest>,
 	client: Client,
 ) => {
 	if (!client.isOwner || !client.lobby) {
@@ -61,15 +93,25 @@ export const respondToLobbyJoinRequestAction = (
 	lobby.deletePendingJoinRequest(requestId)
 
 	if (!accepted) {
+		if (blocked) {
+			lobby.blockJoinRequestsFromClient(request.client)
+		} else {
+			lobby.setJoinRequestCooldown(request.client, LOBBY_JOIN_REQUEST_COOLDOWN_MS)
+		}
+
 		sendLobbyJoinRequestRejected(
 			request.client,
 			lobby.code,
-			'Join request denied.',
+			blocked
+				? 'The host blocked your join requests for this lobby.'
+				: 'Join request denied.',
+			requestId,
+			blocked ? 'blocked' : 'denied',
 		)
 		recordLobbyEvent(
 			lobby,
-			'join_request.denied',
-			`${client.username} denied ${request.client.username}`,
+			blocked ? 'join_request.blocked' : 'join_request.denied',
+			`${client.username} ${blocked ? 'blocked' : 'denied'} ${request.client.username}`,
 			{
 				player: client,
 				details: { requesterPlayerId: request.client.id },
@@ -80,21 +122,31 @@ export const respondToLobbyJoinRequestAction = (
 
 	if (request.client.lobby) {
 		sendSystemError(client, 'Requester is already in a lobby.')
+		sendLobbyJoinRequestClosed(client, lobby.code, requestId, 'unavailable')
 		return
 	}
 
 	const blockMessage = getLobbyJoinBlockMessage(lobby, request.client)
 	if (blockMessage) {
 		sendSystemError(client, blockMessage)
-		sendLobbyJoinRequestRejected(request.client, lobby.code, blockMessage)
+		sendLobbyJoinRequestRejected(
+			request.client,
+			lobby.code,
+			blockMessage,
+			requestId,
+			'unavailable',
+		)
+		sendLobbyJoinRequestClosed(client, lobby.code, requestId, 'unavailable')
 		return
 	}
 
 	if (!joinLobbyClient(lobby, request.client)) {
+		sendLobbyJoinRequestClosed(client, lobby.code, requestId, 'unavailable')
 		return
 	}
 
 	syncJoinedLobbyClientState(request.client)
+	sendLobbyJoinRequestClosed(client, lobby.code, requestId, 'accepted')
 	recordLobbyEvent(
 		lobby,
 		'join_request.accepted',

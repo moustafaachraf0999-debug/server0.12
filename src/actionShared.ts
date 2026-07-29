@@ -3,6 +3,13 @@ import type { LobbyType } from './lobbyTypes.js'
 export type GameMode = 'attrition' | 'showdown' | 'survival' | 'coop'
 export type { LobbyType } from './lobbyTypes.js'
 export type LobbyAccessMode = 'public' | 'ask_first' | 'private'
+export type LobbyJoinRequestCloseReason =
+	| 'accepted'
+	| 'blocked'
+	| 'denied'
+	| 'expired'
+	| 'cancelled'
+	| 'unavailable'
 export type BlindRow = 'Small' | 'Big' | 'Boss'
 export type BlindKind = 'small' | 'big' | 'boss' | 'pvp'
 
@@ -56,4 +63,6 @@ export type LobbyJoinRequestWirePayload = {
 	blindCol: number
 	modHash: string
 	isCached: boolean
+	expiresAt: number
+	expiresInMs: number
 }

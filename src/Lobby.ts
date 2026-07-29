@@ -14,6 +14,7 @@ import {
 } from './lobbyOptions.js'
 import { DEFAULT_LOBBY_TYPE } from './lobbyTypes.js'
 import { preparePlayerForFreshLobbyAttachment } from './playerState.js'
+import { normalizeIpAddress } from './playerDirectory.js'
 
 type AttachFreshClientOptions = {
 	isOwner?: boolean
@@ -29,6 +30,8 @@ export type PendingLobbyJoinRequest = {
 	requestId: string
 	client: Client
 	createdAt: number
+	expiresAt: number
+	timeout?: ReturnType<typeof setTimeout>
 }
 
 class Lobby {
@@ -53,6 +56,8 @@ class Lobby {
 	private disconnectedSlots = new Map<string, DisconnectedSlot>()
 	private endGameSnapshots = new Map<string, EndGameSnapshot>()
 	private pendingJoinRequests = new Map<string, PendingLobbyJoinRequest>()
+	private joinRequestCooldowns = new Map<string, number>()
+	private blockedJoinRequestKeys = new Set<string>()
 
 	// Attrition is the default game mode, FFA is the default lobby type
 	constructor(
@@ -172,7 +177,10 @@ class Lobby {
 	getDisconnectedSlots = (): DisconnectedSlot[] =>
 		Array.from(this.disconnectedSlots.values())
 
-	addPendingJoinRequest = (client: Client): PendingLobbyJoinRequest => {
+	addPendingJoinRequest = (
+		client: Client,
+		timeoutMs: number,
+	): PendingLobbyJoinRequest => {
 		const existingRequest = this.findPendingJoinRequestForClient(client.id)
 		if (existingRequest) {
 			return existingRequest
@@ -187,6 +195,7 @@ class Lobby {
 			requestId,
 			client,
 			createdAt: Date.now(),
+			expiresAt: Date.now() + Math.max(0, timeoutMs),
 		}
 		this.pendingJoinRequests.set(requestId, request)
 		return request
@@ -197,8 +206,13 @@ class Lobby {
 	): PendingLobbyJoinRequest | undefined =>
 		this.pendingJoinRequests.get(requestId)
 
-	deletePendingJoinRequest = (requestId: string): boolean =>
-		this.pendingJoinRequests.delete(requestId)
+	deletePendingJoinRequest = (requestId: string): boolean => {
+		const request = this.pendingJoinRequests.get(requestId)
+		if (request?.timeout) {
+			clearTimeout(request.timeout)
+		}
+		return this.pendingJoinRequests.delete(requestId)
+	}
 
 	findPendingJoinRequestForClient = (
 		clientId: string,
@@ -215,7 +229,7 @@ class Lobby {
 		let deleted = false
 		for (const request of this.pendingJoinRequests.values()) {
 			if (request.client.id === clientId) {
-				this.pendingJoinRequests.delete(request.requestId)
+				this.deletePendingJoinRequest(request.requestId)
 				deleted = true
 			}
 		}
@@ -224,6 +238,39 @@ class Lobby {
 
 	getPendingJoinRequests = (): PendingLobbyJoinRequest[] =>
 		Array.from(this.pendingJoinRequests.values())
+
+	private getJoinRequestClientKey = (client: Client): string =>
+		normalizeIpAddress(client.remoteAddress)
+
+	getJoinRequestCooldownRemainingMs = (client: Client): number => {
+		const key = this.getJoinRequestClientKey(client)
+		const expiresAt = this.joinRequestCooldowns.get(key)
+		if (!expiresAt) {
+			return 0
+		}
+
+		const remainingMs = expiresAt - Date.now()
+		if (remainingMs <= 0) {
+			this.joinRequestCooldowns.delete(key)
+			return 0
+		}
+		return remainingMs
+	}
+
+	setJoinRequestCooldown = (client: Client, timeoutMs: number): number => {
+		const expiresAt = Date.now() + Math.max(0, timeoutMs)
+		this.joinRequestCooldowns.set(this.getJoinRequestClientKey(client), expiresAt)
+		return expiresAt
+	}
+
+	blockJoinRequestsFromClient = (client: Client): void => {
+		const key = this.getJoinRequestClientKey(client)
+		this.blockedJoinRequestKeys.add(key)
+		this.joinRequestCooldowns.delete(key)
+	}
+
+	isJoinRequesterBlocked = (client: Client): boolean =>
+		this.blockedJoinRequestKeys.has(this.getJoinRequestClientKey(client))
 }
 
 export default Lobby

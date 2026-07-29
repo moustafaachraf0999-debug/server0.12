@@ -26,6 +26,7 @@ export type {
 } from './actionClientFeature.js'
 
 export type {
+	ActionCancelLobbyJoinRequest,
 	ActionCreateLobby,
 	ActionJoinLobby,
 	ActionKickPlayer,

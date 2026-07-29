@@ -3,6 +3,11 @@ import { createHash, timingSafeEqual } from 'node:crypto'
 import type { Socket } from 'node:net'
 import { Lobbies } from '../lobbyRegistry.js'
 import { getMonitorSnapshot } from './monitorStore.js'
+import {
+	banIp,
+	disconnectActiveClientsByIp,
+	unbanIp,
+} from '../playerDirectory.js'
 
 const DEFAULT_MONITOR_PORT = 8790
 
@@ -104,6 +109,28 @@ const sendJson = (
 	)
 }
 
+const readJsonBody = async (request: IncomingMessage) => {
+	const chunks: Buffer[] = []
+	let totalBytes = 0
+	for await (const chunk of request) {
+		const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+		totalBytes += buffer.length
+		if (totalBytes > 4096) {
+			throw new Error('Request body too large')
+		}
+		chunks.push(buffer)
+	}
+
+	if (!chunks.length) return {}
+	return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
+}
+
+const getPayloadIp = (payload: unknown) => {
+	if (!payload || typeof payload !== 'object') return ''
+	const ip = (payload as { ip?: unknown }).ip
+	return typeof ip === 'string' ? ip : ''
+}
+
 const dashboardHtml = `<!doctype html>
 <html lang="en">
 <head>
@@ -169,6 +196,12 @@ h1 {
 	box-shadow: 0 3px 0 rgba(0,0,0,.35);
 }
 .tab.active, .btn.primary { background: var(--blue); }
+.btn.danger { background: var(--red); }
+.btn.safe { background: var(--green); color: #06120d; }
+.btn:disabled {
+	opacity: .55;
+	cursor: default;
+}
 .stat {
 	background: var(--panel);
 	border: 1px solid rgba(157,184,200,.25);
@@ -347,6 +380,7 @@ pre {
 		<div class="toolbar">
 			<button class="tab active" data-tab="live">Live</button>
 			<button class="tab" data-tab="archived">Archived</button>
+			<button class="tab" data-tab="players">Players List</button>
 			<button class="btn" id="refreshBtn">Refresh</button>
 			<button class="btn" id="exportBtn">Export JSON</button>
 		</div>
@@ -390,18 +424,45 @@ async function fetchSnapshot() {
 	return response.json();
 }
 
+async function postJson(path, body) {
+	const response = await fetch(path, {
+		method: 'POST',
+		headers: {
+			authorization: 'Bearer ' + state.token,
+			'content-type': 'application/json',
+		},
+		body: JSON.stringify(body),
+		cache: 'no-store',
+	});
+	const payload = await response.json().catch(() => ({}));
+	if (!response.ok || payload.success === false) {
+		throw new Error(payload.error || ('HTTP ' + response.status));
+	}
+	return payload;
+}
+
 function renderStats() {
 	const counts = state.data?.counts || {};
 	$('stats').innerHTML = [
 		['Live lobbies', counts.live ?? 0],
 		['In game', counts.inGame ?? 0],
 		['Players', counts.players ?? 0],
+		['Tracked IPs', counts.trackedIps ?? 0],
+		['Banned IPs', counts.bannedIps ?? 0],
 		['Archived', counts.archived ?? 0],
 	].map(([label, value]) => '<div class="stat"><span class="muted">' + label + '</span><b>' + value + '</b></div>').join('');
 }
 
 function getVisibleLobbies() {
 	return state.tab === 'live' ? (state.data?.live || []) : (state.data?.archived || []);
+}
+
+function getVisiblePlayers() {
+	return state.data?.players || [];
+}
+
+function getPlayerItemId(player) {
+	return 'player:' + player.ip;
 }
 
 function getItemId(lobby) {
@@ -432,7 +493,43 @@ function renderOutcome(lobby) {
 		'</div>';
 }
 
+function renderPlayerDirectoryList() {
+	const players = getVisiblePlayers();
+	if (!players.length) {
+		$('lobbyList').innerHTML = '<p class="muted">No players observed yet.</p>';
+		$('detail').innerHTML = '<p class="muted">Nothing selected.</p>';
+		return;
+	}
+	if (!players.some(player => getPlayerItemId(player) === state.selectedId)) {
+		state.selectedId = getPlayerItemId(players[0]);
+	}
+	$('lobbyList').innerHTML = players.map(player => {
+		const itemId = getPlayerItemId(player);
+		const active = itemId === state.selectedId ? ' active' : '';
+		const names = player.names?.length ? player.names.join(', ') : 'No names yet';
+		return '<button class="lobby ' + (player.activeConnections > 0 ? 'in_game' : 'waiting') + active + '" data-id="' + escapeHtml(itemId) + '">' +
+			'<div class="row"><span class="code">' + escapeHtml(player.ip) + '</span>' +
+			(player.banned ? '<span class="pill red">Banned</span>' : player.activeConnections > 0 ? '<span class="pill green">Online</span>' : '<span class="pill orange">Seen</span>') +
+			'</div>' +
+			'<div>' + player.activeConnections + ' active · ' + player.connectionCount + ' connections</div>' +
+			'<div class="muted">' + escapeHtml(names) + '</div>' +
+			'<div class="muted">Last seen ' + fmtTime(player.lastSeenAt) + '</div>' +
+			'</button>';
+	}).join('');
+	for (const button of document.querySelectorAll('.lobby[data-id]')) {
+		button.addEventListener('click', () => {
+			state.selectedId = button.getAttribute('data-id');
+			render();
+		});
+	}
+}
+
 function renderLobbyList() {
+	if (state.tab === 'players') {
+		renderPlayerDirectoryList();
+		return;
+	}
+
 	const lobbies = getVisibleLobbies();
 	if (!lobbies.length) {
 		$('lobbyList').innerHTML = '<p class="muted">No ' + state.tab + ' lobbies.</p>';
@@ -471,6 +568,7 @@ function renderPlayer(player) {
 		(player.isDisconnected ? '<span class="pill red">Disconnected</span>' : '<span class="pill green">Online</span>') +
 		'</span></div>' +
 		'<div class="kv">' +
+		'<div>IP: <b>' + escapeHtml(player.ip || 'unknown') + '</b></div>' +
 		'<div>Lives: <b>' + player.lives + '</b></div>' +
 		'<div>Score: <b>' + escapeHtml(player.score) + '</b></div>' +
 		'<div>Ante: <b>' + player.ante + '</b></div>' +
@@ -537,7 +635,76 @@ function renderEvents(lobby) {
 	).join('') + '</div>';
 }
 
+function renderPlayerDirectoryDetail() {
+	const player = getVisiblePlayers().find(item => getPlayerItemId(item) === state.selectedId);
+	if (!player) {
+		$('detail').innerHTML = '<p class="muted">Nothing selected.</p>';
+		return;
+	}
+	const names = player.names?.length
+		? player.names.map(name => '<span class="mod">' + escapeHtml(name) + '</span>').join('')
+		: '<span class="mod">No names recorded</span>';
+	$('detail').innerHTML =
+		'<div class="section-title"><span class="code">' + escapeHtml(player.ip) + '</span>' +
+		(player.banned ? '<span class="pill red">Banned</span>' : '<span class="pill green">Allowed</span>') +
+		'</div>' +
+		'<div class="kv">' +
+		'<div>Active: <b>' + player.activeConnections + '</b></div>' +
+		'<div>Connections: <b>' + player.connectionCount + '</b></div>' +
+		'<div>First seen: <b>' + fmtTime(player.firstSeenAt) + '</b></div>' +
+		'<div>Last seen: <b>' + fmtTime(player.lastSeenAt) + '</b></div>' +
+		'<div>Last client: <b>' + escapeHtml(player.lastClientId || 'none') + '</b></div>' +
+		'<div>Last lobby: <b>' + escapeHtml(player.lastLobbyCode || 'none') + '</b></div>' +
+		(player.banned ? '<div>Banned at: <b>' + fmtTime(player.bannedAt) + '</b></div>' : '') +
+		'</div>' +
+		'<div class="section"><div class="section-title">Names Used</div><div class="cards">' + names + '</div></div>' +
+		'<div class="section toolbar">' +
+		(player.banned
+			? '<button class="btn safe" id="unbanIpBtn">Unban IP</button>'
+			: '<button class="btn danger" id="banIpBtn">Ban IP</button>') +
+		'<span class="muted" id="ipActionStatus"></span>' +
+		'</div>';
+
+	const status = $('ipActionStatus');
+	const banButton = $('banIpBtn');
+	if (banButton) {
+		banButton.addEventListener('click', async () => {
+			if (!confirm('Ban IP ' + player.ip + '? Active connections from this IP will be disconnected.')) return;
+			banButton.disabled = true;
+			status.textContent = 'Banning...';
+			try {
+				await postJson('/admin/api/players/ban-ip', { ip: player.ip });
+				state.selectedId = getPlayerItemId(player);
+				await refresh();
+			} catch (error) {
+				status.textContent = 'Failed: ' + error.message;
+				banButton.disabled = false;
+			}
+		});
+	}
+	const unbanButton = $('unbanIpBtn');
+	if (unbanButton) {
+		unbanButton.addEventListener('click', async () => {
+			unbanButton.disabled = true;
+			status.textContent = 'Unbanning...';
+			try {
+				await postJson('/admin/api/players/unban-ip', { ip: player.ip });
+				state.selectedId = getPlayerItemId(player);
+				await refresh();
+			} catch (error) {
+				status.textContent = 'Failed: ' + error.message;
+				unbanButton.disabled = false;
+			}
+		});
+	}
+}
+
 function renderDetail() {
+	if (state.tab === 'players') {
+		renderPlayerDirectoryDetail();
+		return;
+	}
+
 	const lobby = getVisibleLobbies().find(item => getItemId(item) === state.selectedId);
 	if (!lobby) {
 		$('detail').innerHTML = '<p class="muted">Nothing selected.</p>';
@@ -623,7 +790,7 @@ setInterval(refresh, 5000);
 </body>
 </html>`
 
-const handleDashboardRequest = (
+const handleDashboardRequest = async (
 	request: IncomingMessage,
 	response: ServerResponse,
 ) => {
@@ -658,6 +825,43 @@ const handleDashboardRequest = (
 
 	if (url.pathname === '/admin/api/snapshot') {
 		sendJson(response, 200, getMonitorSnapshot(Lobbies.values()))
+		return
+	}
+
+	if (url.pathname === '/admin/api/players/ban-ip') {
+		if (request.method !== 'POST') {
+			sendJson(response, 405, { success: false, error: 'Method not allowed' })
+			return
+		}
+		try {
+			const payload = await readJsonBody(request)
+			const record = banIp(getPayloadIp(payload))
+			const disconnected = disconnectActiveClientsByIp(record.ip)
+			sendJson(response, 200, { success: true, record, disconnected })
+		} catch (error) {
+			sendJson(response, 400, {
+				success: false,
+				error: error instanceof Error ? error.message : 'Invalid request',
+			})
+		}
+		return
+	}
+
+	if (url.pathname === '/admin/api/players/unban-ip') {
+		if (request.method !== 'POST') {
+			sendJson(response, 405, { success: false, error: 'Method not allowed' })
+			return
+		}
+		try {
+			const payload = await readJsonBody(request)
+			const removed = unbanIp(getPayloadIp(payload))
+			sendJson(response, 200, { success: true, removed })
+		} catch (error) {
+			sendJson(response, 400, {
+				success: false,
+				error: error instanceof Error ? error.message : 'Invalid request',
+			})
+		}
 		return
 	}
 

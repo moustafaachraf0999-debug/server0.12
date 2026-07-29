@@ -38,6 +38,7 @@ export type {
 	ActionJoinedLobby,
 	ActionKickedFromLobby,
 	ActionLobbyInfo,
+	ActionLobbyJoinRequestClosed,
 	ActionLobbyJoinRequestPending,
 	ActionLobbyJoinRequestReceived,
 	ActionLobbyJoinRequestRejected,

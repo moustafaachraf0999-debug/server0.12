@@ -11,6 +11,7 @@ export type {
 	GameMode,
 	LobbyAccessMode,
 	LobbyBrowserEntryWirePayload,
+	LobbyJoinRequestCloseReason,
 	LobbyJoinRequestWirePayload,
 	LobbyNemesisAssignmentWirePayload,
 	LobbyOptionsWirePayload,
@@ -48,6 +49,7 @@ export type {
 	ActionKickedFromLobby,
 	ActionLetsGoGamblingNemesis,
 	ActionLobbyInfo,
+	ActionLobbyJoinRequestClosed,
 	ActionLobbyJoinRequestPending,
 	ActionLobbyJoinRequestReceived,
 	ActionLobbyJoinRequestRejected,
@@ -105,6 +107,7 @@ export type {
 export type {
 	ActionClientToServer,
 	ActionBlindPreview,
+	ActionCancelLobbyJoinRequest,
 	ActionCoopBossBlindRequest,
 	ActionCreateLobby,
 	ActionEatPizzaRequest,

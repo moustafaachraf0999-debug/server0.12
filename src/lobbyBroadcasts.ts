@@ -4,6 +4,7 @@ import type {
 	ActionLobbyJoinRequestPending,
 	ActionLobbyJoinRequestReceived,
 	ActionLobbyJoinRequestRejected,
+	ActionLobbyJoinRequestClosed,
 	ActionLobbyList,
 	ActionLobbyNemesisAssignments,
 	ActionLobbyPlayerJoined,
@@ -11,6 +12,7 @@ import type {
 	ActionLobbyPlayerUpdated,
 	ActionLobbyTypeChanged,
 	LobbyBrowserEntryWirePayload,
+	LobbyJoinRequestCloseReason,
 	LobbyJoinRequestWirePayload,
 	ActionServerToClient,
 	LobbyTypeChangedPlayerWirePayload,
@@ -126,6 +128,7 @@ export const sendLobbyList = (
 export const buildLobbyJoinRequest = (
 	requestId: string,
 	client: Client,
+	expiresAt: number,
 ): LobbyJoinRequestWirePayload => ({
 	requestId,
 	playerId: client.id,
@@ -133,26 +136,34 @@ export const buildLobbyJoinRequest = (
 	blindCol: client.blindCol,
 	modHash: client.modHash,
 	isCached: client.isCached,
+	expiresAt,
+	expiresInMs: Math.max(0, expiresAt - Date.now()),
 })
 
 export const sendLobbyJoinRequestReceived = (
 	owner: Client,
 	requestId: string,
 	requester: Client,
+	expiresAt: number,
 ) => {
 	sendLobbyServerAction(owner, {
 		action: 'lobbyJoinRequestReceived',
-		request: buildLobbyJoinRequest(requestId, requester),
+		request: buildLobbyJoinRequest(requestId, requester, expiresAt),
 	} satisfies ActionLobbyJoinRequestReceived)
 }
 
 export const sendLobbyJoinRequestPending = (
 	client: Client,
 	code: string,
+	requestId: string,
+	expiresAt: number,
 ) => {
 	sendLobbyServerAction(client, {
 		action: 'lobbyJoinRequestPending',
 		code,
+		requestId,
+		expiresAt,
+		expiresInMs: Math.max(0, expiresAt - Date.now()),
 	} satisfies ActionLobbyJoinRequestPending)
 }
 
@@ -160,12 +171,30 @@ export const sendLobbyJoinRequestRejected = (
 	client: Client,
 	code: string,
 	message: string,
+	requestId?: string,
+	reason?: LobbyJoinRequestCloseReason,
 ) => {
 	sendLobbyServerAction(client, {
 		action: 'lobbyJoinRequestRejected',
 		code,
 		message,
+		requestId,
+		reason,
 	} satisfies ActionLobbyJoinRequestRejected)
+}
+
+export const sendLobbyJoinRequestClosed = (
+	client: Client,
+	code: string,
+	requestId: string,
+	reason: LobbyJoinRequestCloseReason,
+) => {
+	sendLobbyServerAction(client, {
+		action: 'lobbyJoinRequestClosed',
+		code,
+		requestId,
+		reason,
+	} satisfies ActionLobbyJoinRequestClosed)
 }
 
 export const broadcastLobbyPlayerUpdated = (

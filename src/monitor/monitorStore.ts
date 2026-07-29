@@ -1,6 +1,11 @@
 import type Client from '../Client.js'
 import type Lobby from '../Lobby.js'
 import { getLobbyMaxPlayers } from '../lobbyRules.js'
+import {
+	getPlayerDirectorySnapshot,
+	resetPlayerDirectoryForTests,
+	type PlayerDirectoryEntry,
+} from '../playerDirectory.js'
 
 const MAX_LOBBY_EVENTS = 250
 const MAX_ARCHIVED_LOBBIES = 100
@@ -21,6 +26,7 @@ export type MonitorEvent = {
 export type MonitorPlayerSnapshot = {
 	id: string
 	username: string
+	ip: string
 	isOwner: boolean
 	isReadyLobby: boolean
 	isReady: boolean
@@ -122,6 +128,21 @@ export type MonitorLobbySnapshot = {
 		generation: number
 	}
 	events: MonitorEvent[]
+}
+
+export type MonitorSnapshot = {
+	generatedAt: string
+	live: MonitorLobbySnapshot[]
+	archived: MonitorLobbySnapshot[]
+	players: PlayerDirectoryEntry[]
+	counts: {
+		live: number
+		archived: number
+		players: number
+		inGame: number
+		trackedIps: number
+		bannedIps: number
+	}
 }
 
 type LobbyMonitorState = {
@@ -462,6 +483,7 @@ const buildPlayerSnapshot = (
 ): MonitorPlayerSnapshot => ({
 	id: player.id,
 	username: player.username,
+	ip: player.remoteAddress,
 	isOwner: player.isOwner,
 	isReadyLobby: player.isReadyLobby,
 	isReady: player.isReady,
@@ -493,6 +515,7 @@ const buildDisconnectedPlayerSnapshot = (
 	return {
 		id: saved.id,
 		username: saved.username,
+		ip: 'unknown',
 		isOwner: saved.isOwner,
 		isReadyLobby: saved.isReadyLobby,
 		isReady: saved.isReady,
@@ -710,15 +733,19 @@ export const getMonitorSnapshot = (lobbies: Iterable<Lobby>) => {
 	const live = Array.from(lobbies).map((lobby) =>
 		buildMonitorLobbySnapshot(lobby),
 	)
+	const players = getPlayerDirectorySnapshot()
 	return {
 		generatedAt: nowIso(),
 		live,
 		archived: archivedLobbies,
+		players,
 		counts: {
 			live: live.length,
 			archived: archivedLobbies.length,
 			players: live.reduce((total, lobby) => total + lobby.playerCount, 0),
 			inGame: live.filter((lobby) => lobby.status === 'in_game').length,
+			trackedIps: players.length,
+			bannedIps: players.filter((player) => player.banned).length,
 		},
 	}
 }
@@ -729,4 +756,5 @@ export const resetMonitorStoreForTests = () => {
 	nextArchiveId = 1
 	lobbyStates.clear()
 	archivedLobbies.length = 0
+	resetPlayerDirectoryForTests()
 }

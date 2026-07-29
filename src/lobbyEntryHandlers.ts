@@ -12,7 +12,9 @@ import {
 } from './lobbyAccess.js'
 import {
 	sendInitialLobbyJoinedState,
+	sendLobbyJoinRequestClosed,
 	sendLobbyJoinRequestPending,
+	sendLobbyJoinRequestRejected,
 	sendLobbyJoinRequestReceived,
 } from './lobbyBroadcasts.js'
 import { refreshLobbyNemesisAssignmentsForLobby } from './lobbyNemesis.js'
@@ -45,6 +47,50 @@ import {
 import { isSharedSyncOptionEnabled } from './sharedSyncGroups.js'
 import { isValidGameMode } from './gameModes.js'
 import { canClientJoinCoopSaveLobby } from './coopSaveHandlers.js'
+
+export const LOBBY_JOIN_REQUEST_TIMEOUT_MS = 10_000
+export const LOBBY_JOIN_REQUEST_COOLDOWN_MS = 15_000
+
+const schedulePendingLobbyJoinRequestExpiration = (
+	lobby: Lobby,
+	requestId: string,
+) => {
+	const request = lobby.getPendingJoinRequest(requestId)
+	if (!request || request.timeout) {
+		return
+	}
+
+	request.timeout = setTimeout(() => {
+		const pendingRequest = lobby.getPendingJoinRequest(requestId)
+		if (!pendingRequest) {
+			return
+		}
+
+		lobby.deletePendingJoinRequest(requestId)
+		sendLobbyJoinRequestRejected(
+			pendingRequest.client,
+			lobby.code,
+			'Join request expired.',
+			requestId,
+			'expired',
+		)
+		const owner = lobby.getPlayer(lobby.ownerId)
+		if (owner) {
+			sendLobbyJoinRequestClosed(owner, lobby.code, requestId, 'expired')
+		}
+		recordLobbyEvent(
+			lobby,
+			'join_request.expired',
+			`${pendingRequest.client.username} join request expired`,
+			{
+				player: pendingRequest.client,
+				details: { requestId },
+			},
+		)
+	}, Math.max(0, request.expiresAt - Date.now()))
+
+	request.timeout.unref?.()
+}
 
 export const getLobbyJoinBlockMessage = (
 	lobby: Lobby,
@@ -168,18 +214,52 @@ export const joinLobbyAction = (
 	}
 
 	if (newLobby.accessMode === 'ask_first') {
+		if (newLobby.isJoinRequesterBlocked(client)) {
+			sendSystemError(client, 'The host blocked your join requests for this lobby.')
+			return
+		}
+
+		const retryAfterMs = newLobby.getJoinRequestCooldownRemainingMs(client)
+		if (retryAfterMs > 0) {
+			sendSystemError(
+				client,
+				`Please wait ${Math.ceil(retryAfterMs / 1000)}s before requesting to join this lobby again.`,
+			)
+			return
+		}
+
 		const blockMessage = getLobbyJoinBlockMessage(newLobby, client)
 		if (blockMessage) {
 			sendSystemError(client, blockMessage)
 			return
 		}
 
-		const request = newLobby.addPendingJoinRequest(client)
+		const existingRequest = newLobby.findPendingJoinRequestForClient(client.id)
+		if (existingRequest) {
+			sendLobbyJoinRequestPending(
+				client,
+				newLobby.code,
+				existingRequest.requestId,
+				existingRequest.expiresAt,
+			)
+			return
+		}
+
+		const request = newLobby.addPendingJoinRequest(
+			client,
+			LOBBY_JOIN_REQUEST_TIMEOUT_MS,
+		)
+		schedulePendingLobbyJoinRequestExpiration(newLobby, request.requestId)
 		const owner = newLobby.getPlayer(newLobby.ownerId)
 		if (owner) {
-			sendLobbyJoinRequestReceived(owner, request.requestId, client)
+			sendLobbyJoinRequestReceived(owner, request.requestId, client, request.expiresAt)
 		}
-		sendLobbyJoinRequestPending(client, newLobby.code)
+		sendLobbyJoinRequestPending(
+			client,
+			newLobby.code,
+			request.requestId,
+			request.expiresAt,
+		)
 		return
 	}
 

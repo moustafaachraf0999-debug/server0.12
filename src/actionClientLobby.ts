@@ -21,10 +21,15 @@ export type ActionCreateLobby = {
 }
 export type ActionJoinLobby = { action: 'joinLobby'; code: string }
 export type ActionRequestLobbyList = { action: 'requestLobbyList' }
+export type ActionCancelLobbyJoinRequest = {
+	action: 'cancelLobbyJoinRequest'
+	requestId: string
+}
 export type ActionRespondToLobbyJoinRequest = {
 	action: 'respondToLobbyJoinRequest'
 	requestId: string
 	accepted: boolean
+	blocked?: boolean
 }
 export type ActionLeaveLobby = { action: 'leaveLobby' }
 export type ActionReturnToLobby = { action: 'returnToLobby' }
@@ -66,6 +71,7 @@ export type ActionClientLobby =
 	| ActionCreateLobby
 	| ActionJoinLobby
 	| ActionRequestLobbyList
+	| ActionCancelLobbyJoinRequest
 	| ActionRespondToLobbyJoinRequest
 	| ActionLeaveLobby
 	| ActionReturnToLobby

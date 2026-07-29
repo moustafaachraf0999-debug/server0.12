@@ -1,6 +1,7 @@
 import type {
 	GameMode,
 	LobbyBrowserEntryWirePayload,
+	LobbyJoinRequestCloseReason,
 	LobbyJoinRequestWirePayload,
 	LobbyNemesisAssignmentWirePayload,
 	LobbyOptionsWirePayload,
@@ -42,11 +43,22 @@ export type ActionLobbyJoinRequestReceived = {
 export type ActionLobbyJoinRequestPending = {
 	action: 'lobbyJoinRequestPending'
 	code: string
+	requestId: string
+	expiresAt: number
+	expiresInMs: number
 }
 export type ActionLobbyJoinRequestRejected = {
 	action: 'lobbyJoinRequestRejected'
 	code: string
 	message: string
+	requestId?: string
+	reason?: LobbyJoinRequestCloseReason
+}
+export type ActionLobbyJoinRequestClosed = {
+	action: 'lobbyJoinRequestClosed'
+	code: string
+	requestId: string
+	reason: LobbyJoinRequestCloseReason
 }
 export type ActionRejoinedLobby = {
 	action: 'rejoinedLobby'
@@ -131,6 +143,7 @@ export type ActionServerLobby =
 	| ActionLobbyJoinRequestReceived
 	| ActionLobbyJoinRequestPending
 	| ActionLobbyJoinRequestRejected
+	| ActionLobbyJoinRequestClosed
 	| ActionRejoinedLobby
 	| ActionEnemyDisconnected
 	| ActionEnemyReconnected
