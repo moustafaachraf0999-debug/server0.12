@@ -28,6 +28,7 @@ export interface LobbyOptions {
 	legacy_smallworld?: boolean
 	max_players?: number
 	modifier_layers?: string
+	disable_asteroid?: boolean
 	multiplayer_jokers?: boolean
 	no_gold_on_round_loss?: boolean
 	normal_bosses?: boolean
@@ -50,6 +51,7 @@ export interface LobbyOptions {
 	timer_base_seconds?: number
 	timer_forgiveness?: number
 	timer_increment_seconds?: number
+	timer_ownership?: TimerOwnership
 	weekly?: string
 	[key: string]: string | number | boolean | undefined
 }
@@ -64,11 +66,23 @@ export const PVP_SCORE_RULES = [
 
 export type PvpScoreRule = (typeof PVP_SCORE_RULES)[number]
 
+export const TIMER_OWNERSHIP_MODES = ['anyone', 'host'] as const
+
+export type TimerOwnership = (typeof TIMER_OWNERSHIP_MODES)[number]
+
+const TIMER_OWNERSHIP_SET = new Set<string>(TIMER_OWNERSHIP_MODES)
+
+export const DEFAULT_TIMER_OWNERSHIP: TimerOwnership = 'anyone'
+
 const PVP_SCORE_RULE_SET = new Set<string>(PVP_SCORE_RULES)
 
 export const isValidPvpScoreRule = (
 	value: string | undefined,
 ): value is PvpScoreRule => !!value && PVP_SCORE_RULE_SET.has(value)
+
+export const isValidTimerOwnership = (
+	value: string | undefined,
+): value is TimerOwnership => !!value && TIMER_OWNERSHIP_SET.has(value)
 
 type LobbyOptionContract = {
 	booleanKeys: string[]
@@ -167,6 +181,13 @@ const normalizePvpScoreRule = (
 	return isValidPvpScoreRule(normalized) ? normalized : undefined
 }
 
+const normalizeTimerOwnershipOption = (
+	value: LobbyOptionWireValue | undefined,
+): TimerOwnership | undefined => {
+	const normalized = normalizeLobbyOptionString(value)
+	return isValidTimerOwnership(normalized) ? normalized : undefined
+}
+
 export const normalizeLobbyOptionValue = (
 	key: string,
 	value: LobbyOptionWireValue | undefined,
@@ -177,6 +198,10 @@ export const normalizeLobbyOptionValue = (
 
 	if (key === 'pvp_score_rule') {
 		return normalizePvpScoreRule(value)
+	}
+
+	if (key === 'timer_ownership') {
+		return normalizeTimerOwnershipOption(value)
 	}
 
 	if (BOOLEAN_LOBBY_OPTION_KEYS.has(key)) {

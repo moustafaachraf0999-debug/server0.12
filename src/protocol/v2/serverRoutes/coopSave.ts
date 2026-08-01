@@ -10,6 +10,7 @@ import {
 } from '../../../coopSaveHandlers.js'
 import { parseFiniteInsaneInt } from '../../../InsaneInt.js'
 import { PROTOCOL_V2_SCHEMA_IDS } from '../schemaIds.js'
+import { MAX_GROUP_LOBBY_PLAYERS } from '../../../constants.js'
 import {
 	MAX_COOP_SAVE_ID_LENGTH,
 	MAX_COOP_SAVE_SNAPSHOT_LENGTH,
@@ -81,7 +82,7 @@ const isCoopSaveRecordWirePayload = (
 	hasFiniteNumber(value, 'savedAt') &&
 	Array.isArray(value.players) &&
 	value.players.length > 0 &&
-	value.players.length <= 32 &&
+	value.players.length <= MAX_GROUP_LOBBY_PLAYERS &&
 	value.players.every(isCoopSavePlayerPayload) &&
 	isCoopSaveSnapshotsPayload(value.snapshots) &&
 	hasOptionalLobbyOptionsWirePayload(value, 'options') &&

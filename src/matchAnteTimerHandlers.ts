@@ -27,6 +27,12 @@ const LOCAL_TIMER_MODIFIERS = new Set([
 	'pvp_timer',
 ])
 
+const isHostOnlyTimer = (lobby: NonNullable<Client['lobby']>) =>
+	lobby.options.timer_ownership === 'host'
+
+const isLobbyTimerOwner = (client: Client) =>
+	!!client.lobby && client.id === client.lobby.ownerId
+
 const lobbyHasLocalTimerModifier = (lobby: NonNullable<Client['lobby']>) =>
 	String(lobby.options.modifier_layers ?? '')
 		.split(',')
@@ -111,6 +117,10 @@ const canClientStartGroupAnteTimer = (client: Client) => {
 	}
 
 	const lobby = client.lobby
+	if (lobby && isHostOnlyTimer(lobby) && !isLobbyTimerOwner(client)) {
+		return false
+	}
+
 	if (lobby?.anteTimer.controllerId) {
 		return isCurrentGroupAnteTimerController(client)
 	}
@@ -121,6 +131,10 @@ const canClientStartGroupAnteTimer = (client: Client) => {
 const canClientPauseGroupAnteTimer = (client: Client) => {
 	const lobby = client.lobby
 	if (!lobby) {
+		return false
+	}
+
+	if (isHostOnlyTimer(lobby) && !isLobbyTimerOwner(client)) {
 		return false
 	}
 
@@ -185,7 +199,10 @@ export const startAnteTimerAction = (
 	) {
 		traceRuntimeEvent('ante_timer.start_ignored', {
 			...buildLobbyTimerTraceFields(client, lobby),
-			reason: 'not_ready_or_not_controller',
+			reason:
+				isHostOnlyTimer(lobby) && !isLobbyTimerOwner(client)
+					? 'timer_not_host'
+					: 'not_ready_or_not_controller',
 		})
 		return
 	}
@@ -243,7 +260,10 @@ export const pauseAnteTimerAction = (
 	) {
 		traceRuntimeEvent('ante_timer.pause_ignored', {
 			...buildLobbyTimerTraceFields(client, lobby),
-			reason: 'not_controller',
+			reason:
+				isHostOnlyTimer(lobby) && !isLobbyTimerOwner(client)
+					? 'timer_not_host'
+					: 'not_controller',
 		})
 		return
 	}

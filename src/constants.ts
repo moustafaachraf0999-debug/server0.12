@@ -2,7 +2,7 @@ export const MAX_TEAMS = 8
 
 export const MIN_GROUP_LOBBY_PLAYERS = 3
 export const DEFAULT_GROUP_LOBBY_PLAYERS = 16
-export const MAX_GROUP_LOBBY_PLAYERS = 32
+export const MAX_GROUP_LOBBY_PLAYERS = 100
 
 export const DEFAULT_HANDS_PER_ROUND = 4
 

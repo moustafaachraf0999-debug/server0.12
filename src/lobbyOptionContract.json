@@ -12,6 +12,7 @@
 		"normal_bosses",
 		"preview_disabled",
 		"random_loadout",
+		"disable_asteroid",
 		"team_card_sync",
 		"team_hand_level_sync",
 		"team_money_sync",
@@ -45,6 +46,7 @@
 		"modifier_layers",
 		"pvp_score_rule",
 		"ruleset",
+		"timer_ownership",
 		"sleeve",
 		"weekly"
 	],
@@ -74,6 +76,7 @@
 		"normal_bosses": false,
 		"preview_disabled": false,
 		"random_loadout": false,
+		"disable_asteroid": false,
 		"pvp_custom_winners": 1,
 		"pvp_custom_winners_percent": 50,
 		"pvp_score_rule": "highest",
@@ -90,7 +93,8 @@
 		"timer": true,
 		"timer_base_seconds": 150,
 		"timer_forgiveness": 0,
-		"timer_increment_seconds": 60
+		"timer_increment_seconds": 60,
+		"timer_ownership": "anyone"
 	},
 	"groupLobbyDefaults": {
 		"max_players": 16,
