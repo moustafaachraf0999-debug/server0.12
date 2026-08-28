@@ -61,7 +61,9 @@ export const setLobbyPlayersLives = (lobby: Lobby, lives: number) => {
 	if (lobby.lobbyType === 'teams') {
 		const activeTeams = new Set<number>()
 		for (const player of lobby.getPlayers()) {
-			activeTeams.add(player.team ?? 1)
+			if (!player.isSpectator) {
+				activeTeams.add(player.team ?? 1)
+			}
 		}
 		for (const teamId of activeTeams) {
 			lobby.teamState.setLives(teamId, lives)
@@ -70,8 +72,13 @@ export const setLobbyPlayersLives = (lobby: Lobby, lives: number) => {
 
 	for (const player of lobby.getPlayers()) {
 		clearPlayerReadyAndCoopBlindState(player)
-		player.lives = lives
-		sendMatchServerAction(player, { action: 'playerInfo', lives })
+		if (player.isSpectator) {
+			player.lives = 0
+			player.isInMatch = false
+		} else {
+			player.lives = lives
+			sendMatchServerAction(player, { action: 'playerInfo', lives })
+		}
 	}
 
 	for (const player of lobby.getPlayers()) {

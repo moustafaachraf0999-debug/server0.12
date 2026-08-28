@@ -5,6 +5,7 @@ import type {
 	ActionModdedRequest,
 } from './actions.js'
 import { broadcastLobbyAction } from './lobbyBroadcasts.js'
+import { getLobbyActivePlayers } from './lobbyPlayerState/queries.js'
 import { isHeadToHeadLobbyType } from './lobbyTypes.js'
 import { sendFeatureServerAction } from './protocol/v2/index.js'
 
@@ -13,15 +14,15 @@ export const moddedAction = (
 	client: Client,
 ) => {
 	const lobby = client.lobby
-	if (
-		!lobby ||
-		!isHeadToHeadLobbyType(lobby.lobbyType) ||
-		lobby.getPlayerCount() !== 2
-	) {
+	if (!lobby || !isHeadToHeadLobbyType(lobby.lobbyType)) {
 		return
 	}
 
-	const players = lobby.getPlayers()
+	// Spectators do not participate in the 1v1 pairing; count active players
+	// only so a spectator presence does not disable modded relays.
+	const players = getLobbyActivePlayers(lobby)
+	if (players.length !== 2) return
+
 	if (!players.some((player) => player.isOwner)) return
 
 	const opponent = players.find((player) => player.id !== client.id)

@@ -65,6 +65,28 @@ export const broadcastLobbyMatchAction = (
 	}
 }
 
+/**
+ * Like broadcastLobbyMatchAction, but spectators also receive the action.
+ * Used for match-visible state that spectators track live (e.g. the ante
+ * timer) so they do not diverge from the join-time snapshot.
+ */
+export const broadcastLobbyMatchAndSpectatorsAction = (
+	lobby: Lobby,
+	action: ActionServerToClient,
+	options: {
+		excludedPlayerId?: string
+	} = {},
+) => {
+	for (const player of lobby.getPlayers()) {
+		if (player.id === options.excludedPlayerId) {
+			continue
+		}
+		if (player.isSpectator || player.isInMatch) {
+			sendServerAction(player, action)
+		}
+	}
+}
+
 export const sendInitialLobbyJoinedState = (
 	lobby: Lobby,
 	player: Client,

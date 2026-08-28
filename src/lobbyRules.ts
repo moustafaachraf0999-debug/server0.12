@@ -51,7 +51,9 @@ const getLobbyTeamCount = (
 ): number => {
 	const populatedTeams = new Set<number>()
 	for (const player of players ?? lobby.getPlayers()) {
-		populatedTeams.add(player.team ?? 1)
+		if (!player.isSpectator) {
+			populatedTeams.add(player.team ?? 1)
+		}
 	}
 	return populatedTeams.size
 }
@@ -64,24 +66,25 @@ export const getLobbyStartBlockReason = (
 	}
 
 	const players = lobby.getPlayers()
+	const activePlayers = players.filter((player) => !player.isSpectator)
 
 	if (lobbyRequiresReady(lobby)) {
-		if (players.length !== 2) {
+		if (activePlayers.length !== 2) {
 			return 'waiting_for_players'
 		}
 
-		return players.every((player) => player.isOwner || player.isReadyLobby)
+		return activePlayers.every((player) => player.isOwner || player.isReadyLobby)
 			? null
 			: 'waiting_for_guest_ready'
 	}
 
-	if (players.length < 2) {
+	if (activePlayers.length < 2) {
 		return 'waiting_for_players'
 	}
 
 	if (
 		isTeamLobbyType(lobby.lobbyType) &&
-		getLobbyTeamCount(lobby, players) < 2
+		getLobbyTeamCount(lobby, activePlayers) < 2
 	) {
 		return 'waiting_for_teams'
 	}

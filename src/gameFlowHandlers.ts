@@ -17,7 +17,8 @@ import {
 } from './lobbyRules.js'
 import { recordMatchStarted } from './monitor/monitorStore.js'
 import { preparePlayerForMatchStart } from './playerState.js'
-import { sendSystemError } from './protocol/v2/index.js'
+import { sendFeatureServerAction, sendSystemError } from './protocol/v2/index.js'
+import { buildSpectatorHistoryAction } from './spectatorHandlers.js'
 import { startCoopSavedRunAction } from './coopSaveHandlers.js'
 
 const generateSeed = (length = 8) => {
@@ -64,6 +65,7 @@ export const startGameAction = (client: Client) => {
 		: STARTING_LIVES_BY_GAME_MODE[lobby.gameMode]
 
 	lobby.clearEndGameSnapshots()
+	lobby.clearSpectatorState()
 	lobby.teamState.clearSyncCaches()
 	clearDuelMatchState(lobby)
 
@@ -80,18 +82,48 @@ export const startGameAction = (client: Client) => {
 	if (startedDuelRound) {
 		broadcastLobbyNemesisAssignments(lobby)
 	}
+
+	const seed = lobby.options.different_seeds ? undefined : generateSeed()
+	const back = String(lobby.options.back ?? 'Red Deck')
+	const challenge = String(lobby.options.challenge ?? '')
+	const sleeve = String(lobby.options.sleeve ?? 'sleeve_casl_none')
+	const cocktail = String(lobby.options.cocktail ?? '')
+	const stake = getStartGameStake(client)
+
+	lobby.matchStartConfig = {
+		seed,
+		stake,
+		back,
+		challenge,
+		sleeve,
+		cocktail,
+	}
+
 	broadcastLobbyAction(lobby, {
 		action: 'startGame',
 		deck: 'c_multiplayer_1',
-		back: String(lobby.options.back ?? 'Red Deck'),
-		challenge: String(lobby.options.challenge ?? ''),
-		sleeve: String(lobby.options.sleeve ?? 'sleeve_casl_none'),
-		cocktail: String(lobby.options.cocktail ?? ''),
-		stake: getStartGameStake(client),
-		seed: lobby.options.different_seeds ? undefined : generateSeed(),
+		back,
+		challenge,
+		sleeve,
+		cocktail,
+		stake,
+		seed,
 	})
 
 	setLobbyPlayersLives(lobby, lives)
+
+	for (const player of lobby.getPlayers()) {
+		if (player.isSpectator) {
+			const firstActive = lobby.getPlayers().find((p) => !p.isSpectator)
+			if (firstActive) {
+				lobby.spectatorTargets.set(player.id, firstActive.id)
+				sendFeatureServerAction(
+					player,
+					buildSpectatorHistoryAction(firstActive.id, lobby.matchStartConfig),
+				)
+			}
+		}
+	}
 
 	if (lobbyRequiresReady(lobby)) {
 		for (const player of lobby.getPlayers()) {

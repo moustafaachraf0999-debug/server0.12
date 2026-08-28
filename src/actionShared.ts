@@ -32,6 +32,8 @@ export type LobbyPlayerWirePayload = {
 	isCached: boolean
 	isReadyLobby?: boolean
 	isOwner: boolean
+	role?: 'player' | 'spectator'
+	isSpectator?: boolean
 	team?: number
 	isTeamLocked?: boolean
 	isInMatch: boolean

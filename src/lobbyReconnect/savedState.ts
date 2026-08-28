@@ -45,6 +45,7 @@ export const buildSavedGameState = (client: Client): SavedGameState => ({
 	isCached: client.isCached,
 	isOwner: client.isOwner,
 	isInMatch: client.isInMatch,
+	role: client.role,
 })
 
 export const restoreSavedGameState = (
@@ -83,4 +84,6 @@ export const restoreSavedGameState = (
 	client.isCached = savedState.isCached
 	client.isOwner = savedState.isOwner
 	client.isInMatch = savedState.isInMatch
+	client.role = savedState.role === 'spectator' ? 'spectator' : 'player'
+	client.isSpectator = client.role === 'spectator'
 }

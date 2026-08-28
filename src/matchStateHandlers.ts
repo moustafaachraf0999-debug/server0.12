@@ -12,7 +12,7 @@ import {
 	normalizeLobbyAnteValue,
 	resetLobbyAnteTimer,
 } from './lobbyAnteTimer.js'
-import { broadcastLobbyMatchAction } from './lobbyBroadcasts.js'
+import { broadcastLobbyMatchAndSpectatorsAction } from './lobbyBroadcasts.js'
 import { broadcastLobbyPlayerState } from './lobbyPlayerState/broadcasts.js'
 import { resetLobbyTeamLifeBlocker } from './lobbyPlayerState/lives.js'
 import { isPlayerExcludedFromActiveMatch } from './lobbyPlayerState/queries.js'
@@ -61,7 +61,7 @@ export const setAnteAction = (
 	) {
 		resetLobbyAnteTimer(lobby)
 		if (lobby.options?.timer) {
-			broadcastLobbyMatchAction(lobby, buildLobbyAnteTimerAction(lobby))
+			broadcastLobbyMatchAndSpectatorsAction(lobby, buildLobbyAnteTimerAction(lobby))
 		}
 	}
 }

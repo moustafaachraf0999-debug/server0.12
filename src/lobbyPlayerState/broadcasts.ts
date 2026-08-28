@@ -21,6 +21,10 @@ const shouldSendPlayerStateToRecipient = (
 		return false
 	}
 
+	if (recipient.isSpectator) {
+		return true
+	}
+
 	if (!lobby.isInGame) {
 		return true
 	}
@@ -51,7 +55,7 @@ export const broadcastLobbyPlayerState = (
 	const action = buildEnemyInfoAction(lobby, player, lifeLoss)
 
 	if (lobby.isInGame) {
-		for (const recipient of getLobbyActivePlayers(lobby)) {
+		for (const recipient of lobby.getPlayers()) {
 			if (shouldSendPlayerStateToRecipient(lobby, player, recipient)) {
 				sendMatchServerAction(recipient, action)
 			}
@@ -66,14 +70,16 @@ export const sendLobbyMatchStateToPlayer = (
 	lobby: Lobby,
 	recipient: Client,
 ) => {
-	if (!lobby.isInGame || !recipient.isInMatch) {
+	if (!lobby.isInGame || (!recipient.isInMatch && !recipient.isSpectator)) {
 		return
 	}
 
-	sendMatchServerAction(recipient, {
-		action: 'playerInfo',
-		lives: recipient.lives,
-	})
+	if (recipient.isInMatch) {
+		sendMatchServerAction(recipient, {
+			action: 'playerInfo',
+			lives: recipient.lives,
+		})
+	}
 
 	if (lobby.options?.timer) {
 		sendMatchServerAction(
@@ -96,7 +102,7 @@ export const broadcastLobbyMatchPlayerStates = (
 	players: readonly Client[] = getLobbyActivePlayers(lobby),
 ) => {
 	for (const recipient of players) {
-		if (!recipient.isInMatch) {
+		if (!recipient.isInMatch && !recipient.isSpectator) {
 			continue
 		}
 

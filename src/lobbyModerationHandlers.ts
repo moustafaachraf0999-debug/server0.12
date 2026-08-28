@@ -55,6 +55,12 @@ export const makePlayerHostAction = (
 		return
 	}
 
+	const target = lobby.getPlayer(playerId)
+	if (target?.isSpectator) {
+		sendSystemError(client, 'Spectators cannot become the host.')
+		return
+	}
+
 	if (lobby.setOwner(playerId)) {
 		broadcastLobbyInfo(lobby)
 	}

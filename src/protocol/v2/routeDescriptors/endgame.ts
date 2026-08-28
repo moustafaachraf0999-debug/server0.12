@@ -19,6 +19,7 @@ const ENDGAME_RESULT_ACTION_ROUTES = [
 	['winGame', 'win'],
 	['aloneGame', 'alone'],
 	['loseGame', 'lose'],
+	['matchEnded', 'spectatorEnd'],
 ] as const
 
 export const ENDGAME_SERVER_ROUTES = [

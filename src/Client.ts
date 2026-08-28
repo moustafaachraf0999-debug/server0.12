@@ -27,6 +27,8 @@ class Client {
 	modHash = 'NULL'
 	lobby: Lobby | null = null
 	isReadyLobby = false
+	role: 'player' | 'spectator' = 'player'
+	isSpectator = false
 	team: number | null = null
 	isTeamLocked = false
 	isOwner = false

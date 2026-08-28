@@ -38,6 +38,7 @@ export interface SavedGameState {
 	isCached: boolean
 	isOwner: boolean
 	isInMatch: boolean
+	role: Client['role']
 }
 
 export interface DisconnectedSlot {

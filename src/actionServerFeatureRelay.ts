@@ -50,6 +50,32 @@ export type ActionTeamHandLevelSync = {
 	level: string
 }
 
+export type ActionSpectatorActionStream = {
+	action: 'spectatorActionStream'
+	playerId: string
+	actionData: string
+	stepIndex: number
+}
+export type ActionSpectatorHistory = {
+	action: 'spectatorHistory'
+	targetPlayerId: string
+	seed?: string
+	stake?: number
+	back?: string
+	challenge?: string
+	sleeve?: string
+	cocktail?: string
+}
+export type ActionSpectatorRequestSnapshot = {
+	action: 'spectatorRequestSnapshot'
+	spectatorPlayerId: string
+}
+export type ActionSpectatorReceiveSnapshot = {
+	action: 'spectatorReceiveSnapshot'
+	targetPlayerId: string
+	snapshotData: string
+}
+
 export type ActionServerFeatureRelay =
 	| ActionSendPhantom
 	| ActionRemovePhantom
@@ -63,3 +89,7 @@ export type ActionServerFeatureRelay =
 	| ActionModded
 	| ActionTeamCardSync
 	| ActionTeamHandLevelSync
+	| ActionSpectatorActionStream
+	| ActionSpectatorHistory
+	| ActionSpectatorRequestSnapshot
+	| ActionSpectatorReceiveSnapshot

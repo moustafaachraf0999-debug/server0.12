@@ -57,7 +57,39 @@ class Lobby {
 	private endGameSnapshots = new Map<string, EndGameSnapshot>()
 	private pendingJoinRequests = new Map<string, PendingLobbyJoinRequest>()
 	private joinRequestCooldowns = new Map<string, number>()
+	spectatorTargets = new Map<string, string>()
+	/** Last time each spectator asked the target for a live snapshot (rate limit) */
+	spectatorSnapshotRequestAt = new Map<string, number>()
+	matchStartConfig: {
+		seed?: string
+		stake: number
+		back: string
+		challenge: string
+		sleeve: string
+		cocktail: string
+	} | null = null
 	private blockedJoinRequestKeys = new Set<string>()
+
+	clearSpectatorState = () => {
+		this.spectatorTargets.clear()
+		this.spectatorSnapshotRequestAt.clear()
+		this.matchStartConfig = null
+	}
+
+	/** Drop all spectator bookkeeping for a client that stopped spectating or left. */
+	removeSpectatorState = (playerId: string) => {
+		this.spectatorTargets.delete(playerId)
+		this.spectatorSnapshotRequestAt.delete(playerId)
+	}
+
+	/** Drop watch mappings that point at a target that is no longer watchable. */
+	removeSpectatorsOfTarget = (targetId: string) => {
+		for (const [spectatorId, target] of this.spectatorTargets.entries()) {
+			if (target === targetId) {
+				this.spectatorTargets.delete(spectatorId)
+			}
+		}
+	}
 
 	// Attrition is the default game mode, FFA is the default lobby type
 	constructor(

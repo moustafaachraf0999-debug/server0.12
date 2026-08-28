@@ -79,6 +79,8 @@ export type {
 	ActionSoldJoker,
 	ActionSpeedrun,
 	ActionSpentLastShop,
+	ActionSpectatorActionStream,
+	ActionSpectatorHistory,
 	ActionStartAnteTimer,
 	ActionStartBlind,
 	ActionStartGame,
@@ -88,6 +90,7 @@ export type {
 	ActionTeamSkipBlind,
 	ActionWinGame,
 	ActionAloneGame,
+	ActionMatchEnded,
 	LobbyTypeChangedPlayerWirePayload,
 } from './actionServerToClient.js'
 
@@ -147,6 +150,9 @@ export type {
 	ActionSetTeamLock,
 	ActionSkip,
 	ActionSoldJokerRequest,
+	ActionSpectatorActionStreamRequest,
+	ActionSpectatorWatchTargetRequest,
+	ActionSpectatorSetRoleRequest,
 	ActionSpentLastShopRequest,
 	ActionStartAnteTimerRequest,
 	ActionStartGameRequest,

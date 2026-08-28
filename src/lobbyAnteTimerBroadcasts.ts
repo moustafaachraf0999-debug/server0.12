@@ -3,7 +3,7 @@ import {
 	buildLobbyAnteTimerAction,
 	releaseLobbyAnteTimerController,
 } from './lobbyAnteTimer.js'
-import { broadcastLobbyMatchAction } from './lobbyBroadcasts.js'
+import { broadcastLobbyMatchAndSpectatorsAction } from './lobbyBroadcasts.js'
 
 export const pauseLobbyAnteTimerForControllerRelease = (
 	lobby: Lobby,
@@ -17,7 +17,7 @@ export const pauseLobbyAnteTimerForControllerRelease = (
 		controllerId,
 	)
 	if (shouldBroadcastPause) {
-		broadcastLobbyMatchAction(lobby, buildLobbyAnteTimerAction(lobby), {
+		broadcastLobbyMatchAndSpectatorsAction(lobby, buildLobbyAnteTimerAction(lobby), {
 			excludedPlayerId: options.excludedPlayerId,
 		})
 	}

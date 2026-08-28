@@ -39,6 +39,8 @@ export type ActionTeamSkipBlind = {
 export type ActionWinGame = { action: 'winGame' }
 export type ActionAloneGame = { action: 'aloneGame' }
 export type ActionLoseGame = { action: 'loseGame' }
+/** Sent to spectators when the match they are watching finishes. */
+export type ActionMatchEnded = { action: 'matchEnded' }
 export type LifeLossReason =
 	| 'pvp_result'
 	| 'round_failed_death_on_round_loss'
@@ -109,6 +111,7 @@ export type ActionServerMatch =
 	| ActionWinGame
 	| ActionAloneGame
 	| ActionLoseGame
+	| ActionMatchEnded
 	| ActionPlayerInfo
 	| ActionEnemyInfo
 	| ActionEndPvP

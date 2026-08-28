@@ -9,7 +9,7 @@ import {
 	getLobbyAnteTimerStartTime,
 	normalizeLobbyAnteValue,
 } from './lobbyAnteTimer.js'
-import { broadcastLobbyMatchAction } from './lobbyBroadcasts.js'
+import { broadcastLobbyMatchAndSpectatorsAction } from './lobbyBroadcasts.js'
 import { getEnemies } from './lobbyPlayerState/queries.js'
 import { isHeadToHeadLobbyType } from './lobbyTypes.js'
 import { expireLobbyAnteTimer } from './roundFailureHandlers.js'
@@ -43,7 +43,7 @@ const sendAnteTimerAction = (
 	lobby: NonNullable<Client['lobby']>,
 	action: AnteTimerMatchAction,
 ) => {
-	broadcastLobbyMatchAction(lobby, action)
+	broadcastLobbyMatchAndSpectatorsAction(lobby, action)
 }
 
 const relayLocalTimerAction = (
@@ -57,7 +57,7 @@ const relayLocalTimerAction = (
 		return false
 	}
 
-	broadcastLobbyMatchAction(lobby, action, {
+	broadcastLobbyMatchAndSpectatorsAction(lobby, action, {
 		excludedPlayerId: client.id,
 	})
 	traceRuntimeEvent(`ante_timer.local_relay_${action.action}`, {

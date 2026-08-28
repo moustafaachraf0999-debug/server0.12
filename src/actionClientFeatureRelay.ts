@@ -42,6 +42,30 @@ export type ActionTeamHandLevelSyncRequest = {
 	level: string
 }
 
+export type ActionSpectatorActionStreamRequest = {
+	action: 'spectatorActionStream'
+	actionData: string
+	stepIndex: number
+}
+export type ActionSpectatorWatchTargetRequest = {
+	action: 'spectatorWatchTarget'
+	targetPlayerId: string
+}
+export type ActionSpectatorProvideSnapshotRequest = {
+	action: 'spectatorProvideSnapshot'
+	spectatorPlayerId: string
+	targetPlayerId: string
+	snapshotData: string
+}
+export type ActionSpectatorRequestSnapshotRequest = {
+	action: 'spectatorRequestSnapshot'
+	targetPlayerId: string
+}
+export type ActionSpectatorSetRoleRequest = {
+	action: 'spectatorSetRole'
+	role: 'player' | 'spectator'
+}
+
 export type ActionClientFeatureRelay =
 	| ActionSendPhantomRequest
 	| ActionRemovePhantomRequest
@@ -55,3 +79,8 @@ export type ActionClientFeatureRelay =
 	| ActionModdedRequest
 	| ActionTeamCardSyncRequest
 	| ActionTeamHandLevelSyncRequest
+	| ActionSpectatorActionStreamRequest
+	| ActionSpectatorWatchTargetRequest
+	| ActionSpectatorProvideSnapshotRequest
+	| ActionSpectatorRequestSnapshotRequest
+	| ActionSpectatorSetRoleRequest

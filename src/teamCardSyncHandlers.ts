@@ -105,14 +105,14 @@ export const teamHandLevelSyncAction = (
 	args: ActionHandlerArgs<ActionTeamHandLevelSyncRequest>,
 	client: Client,
 ) => {
-	const context = getActiveClientSharedSyncContext(client, 'team_hand_level_sync')
-	if (!context) return
-
 	const hand = typeof args.hand === 'string' ? args.hand : ''
 	const level = normalizeReportedHandLevel(args.level)
 	if (!hand || level === null) {
 		return
 	}
+
+	const context = getActiveClientSharedSyncContext(client, 'team_hand_level_sync')
+	if (!context) return
 
 	const { lobby, groupId, peers } = context
 	const teamHandLevels = lobby.teamState.ensureHandLevels(groupId)

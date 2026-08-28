@@ -24,6 +24,8 @@ const buildPlayerInfo = (
 		isCached: player.isCached,
 		...(includeLobbyReady ? { isReadyLobby: player.isReadyLobby } : {}),
 		isOwner: player.isOwner,
+		role: player.role === 'spectator' ? 'spectator' : 'player',
+		isSpectator: player.role === 'spectator' ? true : undefined,
 		team: player.team ?? undefined,
 		isTeamLocked: player.isTeamLocked,
 		isInMatch: player.isInMatch,

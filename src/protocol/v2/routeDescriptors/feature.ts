@@ -17,6 +17,15 @@ const FEATURE_RELAY_ACTIONS = [
 	'magnet',
 	'magnetResponse',
 	'moddedAction',
+	'spectatorActionStream',
+] as const
+
+export const FEATURE_CLIENT_ACTIONS = [
+	...FEATURE_RELAY_ACTIONS,
+	'spectatorWatchTarget',
+	'spectatorProvideSnapshot',
+	'spectatorRequestSnapshot',
+	'spectatorSetRole',
 ] as const
 
 export const FEATURE_SERVER_ROUTES = [
@@ -25,6 +34,9 @@ export const FEATURE_SERVER_ROUTES = [
 	'jimboTalk',
 	'jimboMove',
 	'jimboRemove',
+	'spectatorHistory',
+	'spectatorRequestSnapshot',
+	'spectatorReceiveSnapshot',
 ] as const
 
 export const FEATURE_ROUTE_ENTRIES: readonly ActionRouteEntry[] = [
@@ -32,7 +44,7 @@ export const FEATURE_ROUTE_ENTRIES: readonly ActionRouteEntry[] = [
 		'feature',
 		PROTOCOL_V2_SCHEMA_IDS.featureEvent,
 		clientIntent,
-		FEATURE_RELAY_ACTIONS,
+		FEATURE_CLIENT_ACTIONS,
 	),
 	...actionRoutes(
 		'feature',

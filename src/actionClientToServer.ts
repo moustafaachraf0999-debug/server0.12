@@ -22,6 +22,9 @@ export type {
 	ActionSpentLastShopRequest,
 	ActionTeamCardSyncRequest,
 	ActionTeamHandLevelSyncRequest,
+	ActionSpectatorActionStreamRequest,
+	ActionSpectatorWatchTargetRequest,
+	ActionSpectatorSetRoleRequest,
 	ActionClientFeature,
 } from './actionClientFeature.js'
 

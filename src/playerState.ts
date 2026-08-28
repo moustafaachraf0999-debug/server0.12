@@ -55,6 +55,18 @@ export const clearPlayerReadyAndCoopBlindState = (player: Client) => {
 }
 
 export const preparePlayerForMatchStart = (player: Client) => {
+	if (player.isSpectator) {
+		player.isInMatch = false
+		player.lives = 0
+		player.score = new InsaneInt(0, 0, 0)
+		player.handsLeft = 0
+		clearPlayerBlindPreviewState(player)
+		clearPendingBlindReadyState(player)
+		clearPlayerStartedBlindRuntimeState(player)
+		player.location = 'loc_selecting'
+		return
+	}
+
 	player.isInMatch = true
 	player.score = new InsaneInt(0, 0, 0)
 	player.handsLeft = 0
@@ -86,11 +98,17 @@ export const clearPlayerMatchRunStateForLobbyReturn = (
 	player.lives = 0
 }
 
+export const clearPlayerSpectatorRole = (player: Client) => {
+	player.role = 'player'
+	player.isSpectator = false
+}
+
 export const preparePlayerForFreshLobbyAttachment = (
 	player: Client,
 	options: { isOwner: boolean; lobbyType: LobbyType },
 ) => {
 	clearPlayerMatchParticipation(player)
+	clearPlayerSpectatorRole(player)
 	player.score = new InsaneInt(0, 0, 0)
 	player.handsLeft = DEFAULT_HANDS_PER_ROUND
 	player.lives = 0
@@ -107,6 +125,7 @@ export const preparePlayerForFreshLobbyAttachment = (
 
 export const clearPlayerLobbyMembership = (player: Client) => {
 	clearPlayerMatchParticipation(player)
+	clearPlayerSpectatorRole(player)
 	player.lobby = null
 	player.isOwner = false
 	player.isReadyLobby = false

@@ -36,6 +36,14 @@ const shouldSendAloneOutcome = (
 	losers.length === 0 &&
 	players[0]?.id === winners[0]?.id
 
+const notifySpectatorsMatchEnded = (lobby: Lobby) => {
+	for (const player of lobby.getPlayers()) {
+		if (player.isSpectator) {
+			sendEndgameServerAction(player, { action: 'matchEnded' })
+		}
+	}
+}
+
 export const finalizeMatchResults = (
 	lobby: Lobby,
 	players: ReturnType<typeof getLobbyActivePlayers>,
@@ -47,6 +55,7 @@ export const finalizeMatchResults = (
 	clearCoopSaveVoteForLobby(lobby)
 	clearDuelMatchState(lobby)
 	resetLobbyAnteTimer(lobby)
+	lobby.clearSpectatorState()
 	lobby.isInGame = false
 
 	const winners = options?.winners ?? []
@@ -67,6 +76,7 @@ export const finalizeMatchResults = (
 		sendEndgameServerAction(loser, { action: 'loseGame' })
 	}
 
+	notifySpectatorsMatchEnded(lobby)
 	broadcastLobbyInfo(lobby)
 }
 
@@ -77,6 +87,7 @@ export const finalizeMatchAbandoned = (
 	clearCoopSaveVoteForLobby(lobby)
 	clearDuelMatchState(lobby)
 	resetLobbyAnteTimer(lobby)
+	lobby.clearSpectatorState()
 	lobby.isInGame = false
 
 	recordMatchAbandoned(lobby, { remaining: remainingPlayers })
@@ -87,6 +98,7 @@ export const finalizeMatchAbandoned = (
 		sendEndgameServerAction(player, { action: 'aloneGame' })
 	}
 
+	notifySpectatorsMatchEnded(lobby)
 	broadcastLobbyInfo(lobby)
 }
 

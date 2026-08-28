@@ -27,6 +27,8 @@ export type {
 	ActionSpentLastShop,
 	ActionTeamCardSync,
 	ActionTeamHandLevelSync,
+	ActionSpectatorActionStream,
+	ActionSpectatorHistory,
 	ActionServerFeature,
 } from './actionServerFeature.js'
 
@@ -74,6 +76,7 @@ export type {
 	ActionStartGame,
 	ActionTeamSkipBlind,
 	ActionWinGame,
+	ActionMatchEnded,
 	ActionServerMatch,
 } from './actionServerMatch.js'
 

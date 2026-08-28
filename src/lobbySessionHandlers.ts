@@ -31,6 +31,10 @@ export const readyLobbyAction = (client: Client) => {
 		return
 	}
 
+	if (client.isSpectator) {
+		return
+	}
+
 	client.isReadyLobby = true
 	broadcastLobbyPlayerUpdated(client.lobby, client)
 }

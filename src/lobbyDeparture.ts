@@ -22,7 +22,9 @@ const assignNextOwnerIfNeeded = (lobby: Lobby, departedPlayerId: string) => {
 		return
 	}
 
-	const nextOwner = lobby.getFirstPlayer()
+	const nextOwner = lobby
+		.getPlayers()
+		.find((player) => !player.isSpectator)
 	if (!nextOwner) {
 		return
 	}
@@ -100,6 +102,8 @@ const finalizePlayerDeparture = (
 		)
 	}
 	lobby.removePlayer(client.id)
+	lobby.removeSpectatorState(client.id)
+	lobby.removeSpectatorsOfTarget(client.id)
 	clearPlayerLobbyMembership(client)
 	recordLobbyEvent(lobby, 'player.left', `${client.username} left the lobby`, {
 		player: client,

@@ -12,7 +12,7 @@ import {
 	isDuelByePlayer,
 	markDuelByeResult,
 } from './lobbyDuelCoordinator.js'
-import { broadcastLobbyMatchAction } from './lobbyBroadcasts.js'
+import { broadcastLobbyMatchAndSpectatorsAction } from './lobbyBroadcasts.js'
 import { loseLobbyTeamLife } from './lobbyPlayerState/lives.js'
 import { getLobbyActivePlayers } from './lobbyPlayerState/queries.js'
 import {
@@ -185,7 +185,7 @@ export const expireLobbyAnteTimer = (
 	}
 
 	lobby.anteTimer.setPaused(0)
-	broadcastLobbyMatchAction(lobby, buildLobbyAnteTimerAction(lobby))
+	broadcastLobbyMatchAndSpectatorsAction(lobby, buildLobbyAnteTimerAction(lobby))
 
 	const expiredPlayers = getLobbyActivePlayers(lobby).filter(
 		(player) => !isPlayerReadyForPvpBlind(player),

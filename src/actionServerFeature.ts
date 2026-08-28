@@ -25,6 +25,8 @@ export type {
 	ActionSpentLastShop,
 	ActionTeamCardSync,
 	ActionTeamHandLevelSync,
+	ActionSpectatorActionStream,
+	ActionSpectatorHistory,
 	ActionServerFeatureRelay,
 } from './actionServerFeatureRelay.js'
 
