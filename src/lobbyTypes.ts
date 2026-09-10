@@ -7,9 +7,6 @@ export const COOP_LOBBY_TYPE: LobbyType = 'coop'
 export const isValidLobbyType = (value: string): value is LobbyType =>
 	LOBBY_TYPES.includes(value as LobbyType)
 
-export const isGroupLobbyType = (lobbyType: LobbyType): boolean =>
-	lobbyType !== '1v1'
-
 export const isHeadToHeadLobbyType = (lobbyType: LobbyType): boolean =>
 	lobbyType === '1v1'
 

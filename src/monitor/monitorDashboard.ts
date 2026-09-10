@@ -907,7 +907,3 @@ export const createMonitorDashboardServer = (): MonitorDashboardServer | null =>
 		},
 	}
 }
-
-export const startMonitorDashboard = () => {
-	createMonitorDashboardServer()?.listen()
-}

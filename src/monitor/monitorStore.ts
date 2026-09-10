@@ -130,7 +130,7 @@ export type MonitorLobbySnapshot = {
 	events: MonitorEvent[]
 }
 
-export type MonitorSnapshot = {
+type MonitorSnapshot = {
 	generatedAt: string
 	live: MonitorLobbySnapshot[]
 	archived: MonitorLobbySnapshot[]
@@ -729,7 +729,9 @@ export const recordLobbyRemoved = (lobby: Lobby) => {
 	lobbyStates.delete(lobby.code)
 }
 
-export const getMonitorSnapshot = (lobbies: Iterable<Lobby>) => {
+export const getMonitorSnapshot = (
+	lobbies: Iterable<Lobby>,
+): MonitorSnapshot => {
 	const live = Array.from(lobbies).map((lobby) =>
 		buildMonitorLobbySnapshot(lobby),
 	)

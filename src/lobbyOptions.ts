@@ -18,6 +18,7 @@ export interface LobbyOptions {
 	cocktail?: string
 	custom_bans?: string
 	coop_blind_scaling_per_player?: number
+	coop_blind_scaling_curve?: number
 	custom_seed?: string
 	death_on_round_loss?: boolean
 	different_decks?: boolean
@@ -71,8 +72,6 @@ export const TIMER_OWNERSHIP_MODES = ['anyone', 'host'] as const
 export type TimerOwnership = (typeof TIMER_OWNERSHIP_MODES)[number]
 
 const TIMER_OWNERSHIP_SET = new Set<string>(TIMER_OWNERSHIP_MODES)
-
-export const DEFAULT_TIMER_OWNERSHIP: TimerOwnership = 'anyone'
 
 const PVP_SCORE_RULE_SET = new Set<string>(PVP_SCORE_RULES)
 
@@ -192,7 +191,10 @@ export const normalizeLobbyOptionValue = (
 	key: string,
 	value: LobbyOptionWireValue | undefined,
 ): string | number | boolean | undefined => {
-	if (key === 'coop_blind_scaling_per_player') {
+	if (
+		key === 'coop_blind_scaling_per_player' ||
+		key === 'coop_blind_scaling_curve'
+	) {
 		return normalizeFiniteNumberLobbyOption(value)
 	}
 

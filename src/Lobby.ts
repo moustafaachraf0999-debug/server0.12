@@ -60,6 +60,8 @@ class Lobby {
 	spectatorTargets = new Map<string, string>()
 	/** Last time each spectator asked the target for a live snapshot (rate limit) */
 	spectatorSnapshotRequestAt = new Map<string, number>()
+	/** Buffer of recent actions streamed by players (capped at 2000 per player) */
+	private playerActionLogs = new Map<string, Array<{ actionData: string; stepIndex: number }>>()
 	matchStartConfig: {
 		seed?: string
 		stake: number
@@ -70,9 +72,26 @@ class Lobby {
 	} | null = null
 	private blockedJoinRequestKeys = new Set<string>()
 
+	appendPlayerAction = (playerId: string, action: { actionData: string; stepIndex: number }) => {
+		let log = this.playerActionLogs.get(playerId)
+		if (!log) {
+			log = []
+			this.playerActionLogs.set(playerId, log)
+		}
+		log.push(action)
+		if (log.length > 2000) {
+			log.shift()
+		}
+	}
+
+	getPlayerActionLog = (playerId: string): Array<{ actionData: string; stepIndex: number }> => {
+		return this.playerActionLogs.get(playerId) ?? []
+	}
+
 	clearSpectatorState = () => {
 		this.spectatorTargets.clear()
 		this.spectatorSnapshotRequestAt.clear()
+		this.playerActionLogs.clear()
 		this.matchStartConfig = null
 	}
 
@@ -80,6 +99,7 @@ class Lobby {
 	removeSpectatorState = (playerId: string) => {
 		this.spectatorTargets.delete(playerId)
 		this.spectatorSnapshotRequestAt.delete(playerId)
+		this.playerActionLogs.delete(playerId)
 	}
 
 	/** Drop watch mappings that point at a target that is no longer watchable. */

@@ -30,6 +30,8 @@ export const spectatorActionStreamAction = (
 	// Only active players stream their own actions into the replay log.
 	if (!client.isInMatch) return
 
+	lobby.appendPlayerAction(client.id, { actionData, stepIndex })
+
 	for (const [spectatorId, targetId] of lobby.spectatorTargets.entries()) {
 		if (targetId === client.id) {
 			const spectator = lobby.getPlayer(spectatorId)
@@ -60,7 +62,13 @@ export const spectatorWatchTargetAction = (
 	const lobby = client.lobby
 	if (!lobby) return
 
-	if (!client.isSpectator) return
+	if (!client.isSpectator) {
+		if (client.isInMatch) return
+		client.role = 'spectator'
+		client.isSpectator = true
+		client.isReadyLobby = false
+		broadcastLobbyPlayerUpdated(lobby, client)
+	}
 
 	if (!isWatchableTarget(lobby, targetPlayerId)) {
 		lobby.spectatorTargets.delete(client.id)
@@ -89,7 +97,13 @@ export const spectatorRequestSnapshotAction = (
 	const lobby = client.lobby
 	if (!lobby) return
 
-	if (!client.isSpectator) return
+	if (!client.isSpectator) {
+		if (client.isInMatch) return
+		client.role = 'spectator'
+		client.isSpectator = true
+		client.isReadyLobby = false
+		broadcastLobbyPlayerUpdated(lobby, client)
+	}
 	if (lobby.spectatorTargets.get(client.id) !== targetPlayerId) return
 	if (!isWatchableTarget(lobby, targetPlayerId)) return
 
@@ -128,9 +142,9 @@ export const spectatorSetRoleAction = (
 	const lobby = client.lobby
 	if (!lobby) return
 
-	// Role changes are only allowed between matches; switching mid-match would
-	// strand the client outside the active match state.
-	if (lobby.isInGame) return
+	// Active players still in an ongoing match cannot abandon to spectator mid-run.
+	// Eliminated players (!client.isInMatch) or players between matches may switch to spectator.
+	if (lobby.isInGame && client.isInMatch) return
 
 	const nextRole = role === 'spectator' ? 'spectator' : 'player'
 	if (client.role === nextRole) return
