@@ -1,3 +1,65 @@
+// Canonical (value-true) triple for ordering: coefficient normalized into
+// [1, 10) so lexicographic comparison is valid regardless of which
+// representation each side parsed or computed into (e.g. raw "8900099"
+// vs averaged "8.900099e6"). Pure: never mutates either operand and never
+// changes any stored representation (so toString/wire output is untouched).
+const canonicalTriple = (value: InsaneInt): [number, number, number] => {
+	if (value.coefficient === 0) {
+		return [0, 0, 0]
+	}
+	if (
+		!Number.isFinite(value.coefficient) ||
+		!Number.isFinite(value.exponent) ||
+		!Number.isFinite(value.startingECount)
+	) {
+		return [value.startingECount, value.exponent, value.coefficient]
+	}
+	const sign = Math.sign(value.coefficient)
+	let magnitude = Math.abs(value.coefficient)
+	let exponent = value.exponent
+	let guard = 0
+	while (magnitude >= 10 && guard++ < 1000) {
+		const shift = Math.floor(magnitude).toString().length - 1
+		magnitude /= Math.pow(10, shift)
+		exponent += shift
+	}
+	guard = 0
+	while (magnitude < 1 && guard++ < 1000) {
+		magnitude *= 10
+		exponent -= 1
+	}
+	return [value.startingECount, exponent, sign * magnitude]
+}
+
+const compareCanonical = (left: InsaneInt, right: InsaneInt): number => {
+	const [leftE, leftX, leftC] = canonicalTriple(left)
+	const [rightE, rightX, rightC] = canonicalTriple(right)
+	const leftSign = Math.sign(leftC)
+	const rightSign = Math.sign(rightC)
+
+	// Different signs (or one is zero): sign alone decides it.
+	if (leftSign !== rightSign) {
+		return leftSign > rightSign ? 1 : -1
+	}
+	if (leftSign === 0) {
+		return 0
+	}
+
+	// Same sign: compare magnitude...
+	let magnitudeCompare: number
+	if (leftE !== rightE) {
+		magnitudeCompare = leftE - rightE
+	} else if (leftX !== rightX) {
+		magnitudeCompare = leftX - rightX
+	} else {
+		magnitudeCompare = Math.abs(leftC) - Math.abs(rightC)
+	}
+
+	// ...but for two negative numbers, the one with the SMALLER magnitude
+	// is the greater number (-5 > -10), so the comparison flips.
+	return leftSign > 0 ? magnitudeCompare : -magnitudeCompare
+}
+
 export class InsaneInt {
 	startingECount: number
 	coefficient: number
@@ -51,43 +113,15 @@ export class InsaneInt {
 	}
 
 	greaterThan(other: InsaneInt) {
-		// Balance first: comparison by startingECount/exponent/coefficient only
-		// makes sense once both numbers are in canonical form.
-		this.balance()
-		other.balance()
-
-		const mySign = Math.sign(this.coefficient)
-		const otherSign = Math.sign(other.coefficient)
-
-		// Different signs (or one is zero): sign alone decides it.
-		if (mySign !== otherSign) {
-			return mySign > otherSign
-		}
-		if (mySign === 0) {
-			return false
-		}
-
-		// Same sign: compare magnitude the old way...
-		let magnitudeCompare: number
-		if (this.startingECount !== other.startingECount) {
-			magnitudeCompare = this.startingECount - other.startingECount
-		} else if (this.exponent !== other.exponent) {
-			magnitudeCompare = this.exponent - other.exponent
-		} else {
-			magnitudeCompare = Math.abs(this.coefficient) - Math.abs(other.coefficient)
-		}
-
-		// ...but for two negative numbers, the one with the SMALLER magnitude
-		// is the greater number (-5 > -10), so the comparison flips.
-		return mySign > 0 ? magnitudeCompare > 0 : magnitudeCompare < 0
+		// Compare canonical triples so ordering is valid regardless of which
+		// representation each side parsed or computed into (e.g. raw
+		// "8900099" vs averaged "8.900099e6"). Pure: no mutation, so stored
+		// forms and toString/wire output are untouched.
+		return compareCanonical(this, other) > 0
 	}
 
 	equalTo(other: InsaneInt) {
-		return (
-			this.startingECount === other.startingECount &&
-			this.exponent === other.exponent &&
-			this.coefficient === other.coefficient
-		)
+		return compareCanonical(this, other) === 0
 	}
 
 	lessThan(other: InsaneInt) {

@@ -8,6 +8,7 @@ import { sendSystemError, sendTeamServerAction } from './protocol/v2/index.js'
 import { traceRuntimeEvent } from './runtimeTrace.js'
 import {
 	clientsShareSyncGroup,
+	getClientSharedSyncGroupId,
 	isSharedSyncOptionEnabled,
 	lobbyUsesSharedSyncGroup,
 } from './sharedSyncGroups.js'
@@ -59,6 +60,14 @@ export const syncMoneyAction = (
 	}
 
 	client.reportedMoney = normalizeMoney(Number(money))
+	if (client.isInMatch) {
+		client.lobby?.matchReplay.recordEvent({
+			actorId: client.id,
+			scope: 'player',
+			type: 'MONEY_SYNC',
+			data: { money: client.reportedMoney },
+		})
+	}
 	traceRuntimeEvent('team_money.sync', {
 		clientId: client.id,
 		money: client.reportedMoney,
@@ -156,6 +165,18 @@ export const sendTeamMoneyAction = (
 
 	client.reportedMoney = reportedSenderMoney - transferAmount
 	target.reportedMoney = normalizeMoney(target.reportedMoney) + transferAmount
+	lobby.matchReplay.recordEvent({
+		actorId: client.id,
+		scope: 'team',
+		scopeId: getClientSharedSyncGroupId(client),
+		type: 'TEAM_MONEY_TRANSFER',
+		data: {
+			targetPlayerId: target.id,
+			amount: transferAmount,
+			senderMoney: client.reportedMoney,
+			targetMoney: target.reportedMoney,
+		},
+	})
 	traceRuntimeEvent('team_money.send_applied', {
 		clientId: client.id,
 		targetPlayerId: target.id,

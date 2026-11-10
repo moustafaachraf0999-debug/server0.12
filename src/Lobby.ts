@@ -15,6 +15,7 @@ import {
 import { DEFAULT_LOBBY_TYPE } from './lobbyTypes.js'
 import { preparePlayerForFreshLobbyAttachment } from './playerState.js'
 import { normalizeIpAddress } from './playerDirectory.js'
+import { MatchReplayRecorder } from './matchReplayRecorder.js'
 
 type AttachFreshClientOptions = {
 	isOwner?: boolean
@@ -43,13 +44,14 @@ class Lobby {
 	isInGame = false
 	coopSaveId: string | null = null
 	ownerId: string
-	firstReadyAt: number | null = null
 	/** Shared team-sync and cooperative blind runtime state */
 	teamState = new LobbyTeamState()
 	/** Active Duels pairings, byes, and bye blind targets */
 	duelState = new LobbyDuelState()
 	/** Shared ante timer state for the active match */
 	anteTimer = new LobbyAnteTimerState()
+	/** Persistent match journal; independent of the bounded live spectator buffer */
+	matchReplay: MatchReplayRecorder
 	/** Connected lobby players */
 	private players = new Map<string, Client>()
 	/** Tracks disconnected players awaiting reconnection */
@@ -73,6 +75,7 @@ class Lobby {
 	private blockedJoinRequestKeys = new Set<string>()
 
 	appendPlayerAction = (playerId: string, action: { actionData: string; stepIndex: number }) => {
+		this.matchReplay.appendPlayerAction(playerId, action)
 		let log = this.playerActionLogs.get(playerId)
 		if (!log) {
 			log = []
@@ -117,6 +120,7 @@ class Lobby {
 		gameMode: GameMode = DEFAULT_GAME_MODE,
 		lobbyType: LobbyType = DEFAULT_LOBBY_TYPE,
 		accessMode: LobbyAccessMode = DEFAULT_LOBBY_ACCESS_MODE,
+		matchReplayRecorder?: MatchReplayRecorder,
 	) {
 		this.code = allocateLobbyCode()
 		registerLobby(this)
@@ -126,7 +130,27 @@ class Lobby {
 		this.lobbyType = lobbyType
 		this.accessMode = accessMode
 		this.options = getDefaultLobbyOptions(lobbyType)
+		this.matchReplay = matchReplayRecorder ?? new MatchReplayRecorder()
 		this.attachFreshClient(host, { isOwner: true })
+	}
+
+	startMatchReplay = (resumedFrom?: string) => {
+		return this.matchReplay.start({
+			lobbyCode: this.code,
+			gameMode: this.gameMode,
+			lobbyType: this.lobbyType,
+			options: { ...this.options },
+			matchConfig: this.matchStartConfig ? { ...this.matchStartConfig } : null,
+			participants: this.getPlayers()
+				.filter((player) => player.isInMatch && !player.isSpectator)
+				.map((player) => ({
+					id: player.id,
+					username: player.username,
+					team: player.team,
+					lives: player.lives,
+				})),
+			resumedFrom,
+		})
 	}
 
 	getClientGamemodeKey = () => `gamemode_mp_${this.gameMode}`

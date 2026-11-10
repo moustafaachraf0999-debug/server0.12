@@ -15,6 +15,12 @@ const setLobbyTeamLives = (
 	lifeLoss?: { reason?: LifeLossReason; previousLives?: number },
 ) => {
 	lobby.teamState.setLives(teamId, lives)
+	lobby.matchReplay.recordEvent({
+		scope: 'team',
+		scopeId: teamId,
+		type: 'TEAM_LIVES',
+		data: { lives, reason: lifeLoss?.reason, previousLives: lifeLoss?.previousLives },
+	})
 
 	for (const player of getLobbyActiveTeamPlayers(lobby, teamId)) {
 		const previousPlayerLives = player.lives

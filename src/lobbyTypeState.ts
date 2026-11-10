@@ -21,5 +21,4 @@ export const resetLobbyPlayersForLobbyTypeChange = (
 
 	lobby.teamState.clearAll()
 	lobby.duelState.clearMatchState()
-	lobby.firstReadyAt = null
 }

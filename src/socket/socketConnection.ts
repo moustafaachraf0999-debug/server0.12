@@ -1,4 +1,5 @@
 import type { Socket } from 'node:net'
+import { StringDecoder } from 'node:string_decoder'
 import Client from '../Client.js'
 import { createSocketKeepAliveManager } from './socketKeepAlive.js'
 import {
@@ -94,6 +95,8 @@ export const createSocketConnectionHandler =
 		)
 		traceServerEvent('socket.connected', buildSocketTraceFields(socket, client))
 
+		// Preserve UTF-8 characters whose bytes span TCP chunks.
+		const decoder = new StringDecoder('utf8')
 		// Buffer for incomplete TCP messages
 		let dataBuffer = ''
 
@@ -167,7 +170,7 @@ export const createSocketConnectionHandler =
 			keepAlive.notifyDataReceived()
 
 			// Buffer incoming data — TCP may split large messages across multiple events
-			dataBuffer += data.toString()
+			dataBuffer += decoder.write(data)
 			const messages = dataBuffer.split('\n')
 			// Keep the last (possibly incomplete) chunk in the buffer
 			dataBuffer = messages.pop() ?? ''

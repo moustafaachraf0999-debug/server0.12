@@ -60,6 +60,10 @@ export const finalizeMatchResults = (
 
 	const winners = options?.winners ?? []
 	const losers = options?.losers ?? []
+	lobby.matchReplay.finish('completed', {
+		winnerIds: winners.map((player) => player.id),
+		loserIds: losers.map((player) => player.id),
+	})
 	recordMatchFinished(lobby, { winners, losers })
 
 	clearPlayersMatchParticipation(players)
@@ -90,6 +94,9 @@ export const finalizeMatchAbandoned = (
 	lobby.clearSpectatorState()
 	lobby.isInGame = false
 
+	lobby.matchReplay.finish('abandoned', {
+		remainingPlayerIds: remainingPlayers.map((player) => player.id),
+	})
 	recordMatchAbandoned(lobby, { remaining: remainingPlayers })
 
 	clearPlayersMatchParticipation(remainingPlayers)

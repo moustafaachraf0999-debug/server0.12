@@ -78,6 +78,9 @@ const getUniqueCoopParticipants = (
 	const keys = new Set<string>()
 
 	for (const player of lobby.getPlayers()) {
+		if (!player.isInMatch || player.isSpectator) {
+			continue
+		}
 		const key = normalizeClientIdentityKey(player)
 		if (!key || keys.has(key)) {
 			return null
@@ -296,6 +299,7 @@ export const saveCoopRunAction = (
 
 	if (vote.snapshots.size >= vote.participants.length) {
 		const save = commitCompletedVote(lobby, vote)
+		lobby.matchReplay.finish('interrupted', { coopSaveId: save.saveId })
 		broadcastVoteStatus(lobby, vote, save)
 		closeSavedRunLobby(lobby)
 		return
@@ -353,6 +357,7 @@ const startCoopSavedRun = (restore: ActiveCoopSaveRestore) => {
 		})
 	}
 
+	lobby.startMatchReplay(save.saveId)
 	broadcastLobbyInfo(lobby)
 	for (const player of lobby.getPlayers()) {
 		sendLobbyMatchStateToPlayer(lobby, player)

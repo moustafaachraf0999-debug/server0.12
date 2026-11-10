@@ -1,5 +1,6 @@
 import type { ActionHandlerArgs } from '../../../actions.js'
 import type {
+	ActionMatchReplayCheckpointRequest,
 	ActionEatPizzaRequest,
 	ActionMagnetResponseRequest,
 	ActionModdedRequest,
@@ -25,6 +26,7 @@ import {
 	spentLastShopAction,
 } from '../../../relayHandlers.js'
 import {
+	matchReplayCheckpointAction,
 	spectatorActionStreamAction,
 	spectatorProvideSnapshotAction,
 	spectatorRequestSnapshotAction,
@@ -103,6 +105,16 @@ const validateSpectatorActionStreamPayload: ProtocolPayloadValidator<
 	isRecordPayload(payload) &&
 	hasNonEmptyStringWithinLength(payload, 'actionData', MAX_SPECTATOR_ACTION_DATA_LENGTH) &&
 	hasFiniteNumber(payload, 'stepIndex')
+
+const validateMatchReplayCheckpointPayload: ProtocolPayloadValidator<
+	ActionHandlerArgs<ActionMatchReplayCheckpointRequest>
+> = (
+	payload: unknown,
+): payload is ActionHandlerArgs<ActionMatchReplayCheckpointRequest> =>
+	isRecordPayload(payload) &&
+	hasFiniteNumber(payload, 'stepIndex') &&
+	(payload.position === 'initial' || payload.position === 'before_action') &&
+	hasNonEmptyStringWithinLength(payload, 'snapshotData', MAX_SPECTATOR_SNAPSHOT_LENGTH)
 
 const validateSpectatorWatchTargetPayload: ProtocolPayloadValidator<
 	ActionHandlerArgs<ActionSpectatorWatchTargetRequest>
@@ -263,5 +275,13 @@ export const FEATURE_INCOMING_PROTOCOL_ROUTE_ENTRIES: readonly IncomingProtocolV
 			'feature.spectatorSetRole',
 			validateSpectatorSetRolePayload,
 			() => spectatorSetRoleAction,
+		),
+		validatedIncomingRoute<ActionHandlerArgs<ActionMatchReplayCheckpointRequest>>(
+			'feature',
+			'matchReplayCheckpoint',
+			PROTOCOL_V2_SCHEMA_IDS.featureEvent,
+			'feature.matchReplayCheckpoint',
+			validateMatchReplayCheckpointPayload,
+			() => matchReplayCheckpointAction,
 		),
 	]

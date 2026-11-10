@@ -74,6 +74,16 @@ export const playHandAction = (
 		}
 	}
 
+	lobby.matchReplay.recordEvent({
+		actorId: client.id,
+		scope: 'player',
+		type: 'PLAYER_ROUND_UPDATE',
+		data: {
+			score: parsedScore.toString(),
+			handsLeft: client.handsLeft,
+			blindTarget: parsedBlindTarget?.toString(),
+		},
+	})
 	broadcastLobbyPlayerState(lobby, client)
 
 	if (handleTeamCoopBlindPlayHand(blindTarget, client)) {

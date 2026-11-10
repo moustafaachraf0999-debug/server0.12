@@ -26,6 +26,7 @@ export const FEATURE_CLIENT_ACTIONS = [
 	'spectatorProvideSnapshot',
 	'spectatorRequestSnapshot',
 	'spectatorSetRole',
+	'matchReplayCheckpoint',
 ] as const
 
 export const FEATURE_SERVER_ROUTES = [

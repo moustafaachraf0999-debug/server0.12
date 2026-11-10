@@ -130,6 +130,13 @@ const handleBossRerollStart = (
 	})
 
 	clearBossReadyState(players)
+	lobby.matchReplay.recordEvent({
+		actorId: client.id,
+		scope: 'team',
+		scopeId: groupId,
+		type: 'COOP_BOSS_REROLL_START',
+		data: { ante, revision },
+	})
 	broadcastCoopBossBlind(players, {
 		action: 'coopBossBlind',
 		phase: 'start',
@@ -182,6 +189,13 @@ const handleBossResult = (
 	if (isPendingResult) {
 		lobby.teamState.clearPendingBossReroll(groupId)
 	}
+	lobby.matchReplay.recordEvent({
+		actorId: client.id,
+		scope: 'team',
+		scopeId: groupId,
+		type: 'COOP_BOSS_BLIND',
+		data: { ante, revision, bossKey, isReroll: isPendingResult },
+	})
 
 	broadcastCoopBossBlind(players, {
 		action: 'coopBossBlind',

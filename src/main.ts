@@ -1,4 +1,5 @@
 import { createServer, type Socket } from 'node:net'
+import { configureMatchReplayRecording } from './matchReplayRecorder.js'
 import { startAdminServer } from './admin/adminServer.js'
 import { disconnectFromLobbyAction } from './lobbyModerationHandlers.js'
 import {
@@ -36,6 +37,8 @@ const {
 	railwayTcpProxyDomain,
 	railwayTcpProxyPort,
 } = resolveServerConfig(process.env)
+
+configureMatchReplayRecording()
 
 interface BigIntWithToJSON {
 	prototype: {

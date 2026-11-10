@@ -44,7 +44,11 @@ import {
 	syncTeamDeckForClient,
 	syncTeamHandLevelsForClient,
 } from './teamCardSyncHandlers.js'
-import { isSharedSyncOptionEnabled } from './sharedSyncGroups.js'
+import {
+	getSharedSyncGroupIdForLobby,
+	isSharedSyncOptionEnabled,
+} from './sharedSyncGroups.js'
+import { resolveTeamCoopBlindAfterRosterChange } from './teamBlindFlowHandlers.js'
 import { isValidGameMode } from './gameModes.js'
 import { canClientJoinCoopSaveLobby } from './coopSaveHandlers.js'
 
@@ -305,4 +309,10 @@ export const rejoinLobbyAction = (
 	sendLobbyMatchStateToPlayer(lobby, client)
 	sendResolvedTeamBlindEndOnRejoin(client, resolvedTeamBlindState)
 	reconcileActiveMatchState(lobby)
+	if (savedState.isInMatch && savedState.coopBlindActive) {
+		resolveTeamCoopBlindAfterRosterChange(
+			lobby,
+			getSharedSyncGroupIdForLobby(lobby, savedState.team),
+		)
+	}
 }

@@ -241,15 +241,15 @@ export const recordPlayerConnection = (
 	entry.lastLobbyCode = client.lobby?.code ?? null
 	addNameToEntry(entry, client.username)
 	syncEntryBanState(entry)
-	activeConnections.set(client.id, { client, disconnect: options.disconnect })
+	activeConnections.set(client.connectionId, { client, disconnect: options.disconnect })
 	savePlayerDirectory()
 }
 
 export const recordPlayerDisconnected = (client: Client) => {
-	const active = activeConnections.get(client.id)
+	const active = activeConnections.get(client.connectionId)
 	if (!active) return
 
-	activeConnections.delete(client.id)
+	activeConnections.delete(client.connectionId)
 	const entry = getOrCreateEntry(client.remoteAddress)
 	entry.activeConnections = Math.max(0, entry.activeConnections - 1)
 	entry.lastSeenAt = nowIso()

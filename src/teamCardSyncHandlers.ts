@@ -91,6 +91,17 @@ export const teamCardSyncAction = (
 		return
 	}
 
+	lobby.matchReplay.recordEvent({
+		actorId: client.id,
+		scope: 'team',
+		scopeId: groupId,
+		type: 'TEAM_CARD_SYNC',
+		data: {
+			cardKey: args.cardKey,
+			actionType: args.actionType,
+			cardData: args.cardData,
+		},
+	})
 	sendTeamSyncToPeers(peers, {
 		action: 'teamCardSync',
 		playerId: client.id,
@@ -123,6 +134,13 @@ export const teamHandLevelSyncAction = (
 	}
 
 	teamHandLevels.set(hand, level)
+	lobby.matchReplay.recordEvent({
+		actorId: client.id,
+		scope: 'team',
+		scopeId: groupId,
+		type: 'TEAM_HAND_LEVEL_SYNC',
+		data: { hand, level },
+	})
 
 	sendTeamSyncToPeers(peers, {
 		action: 'teamHandLevelSync',

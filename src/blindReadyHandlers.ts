@@ -160,7 +160,6 @@ const broadcastGlobalBlindStart = (lobby: Client['lobby']) => {
 	resetLobbyAnteTimer(lobby)
 
 	awardNemesisSpeedrunRewards(activePlayers)
-	lobby.firstReadyAt = null
 
 	resetPlayersForStartedBlind(activePlayers)
 	lobby.teamState.clearBlindTargets()
@@ -310,6 +309,12 @@ export const readyBlindAction = (
 		blindTarget,
 	})
 	setPvpReadyTimestamp(client, normalizedBlindKind, Date.now())
+	lobby.matchReplay.recordEvent({
+		actorId: client.id,
+		scope: 'player',
+		type: 'BLIND_READY',
+		data: { blindRow: normalizedBlindRow, blindKind: normalizedBlindKind },
+	})
 	ensureDuelRound(lobby)
 
 	const allReady = blindReadySatisfied(
@@ -354,4 +359,12 @@ export const unreadyBlindAction = (client: Client) => {
 	}
 	pauseAnteTimerForUnreadyController(client)
 	clearPendingBlindReadyState(client)
+	if (lobby && client.isInMatch) {
+		lobby.matchReplay.recordEvent({
+			actorId: client.id,
+			scope: 'player',
+			type: 'BLIND_UNREADY',
+			data: {},
+		})
+	}
 }

@@ -12,7 +12,10 @@ type SendFn = (action: ActionServerToClient) => void
 type SendProtocolV2Fn = (envelope: ProtocolV2Envelope) => void
 
 class Client {
-	id: string = uuidv4()
+	/** Stable socket identity used by connection-scoped bookkeeping. */
+	readonly connectionId: string = uuidv4()
+	/** Multiplayer identity; reconnect may restore this onto a replacement socket. */
+	id: string = this.connectionId
 	address: ClientAddress
 	remoteAddress: string
 	remotePort: number | undefined

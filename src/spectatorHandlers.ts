@@ -2,6 +2,7 @@ import type Client from './Client.js'
 import type Lobby from './Lobby.js'
 import type { ActionHandlerArgs } from './actions.js'
 import type {
+	ActionMatchReplayCheckpointRequest,
 	ActionSpectatorActionStreamRequest,
 	ActionSpectatorProvideSnapshotRequest,
 	ActionSpectatorRequestSnapshotRequest,
@@ -13,11 +14,21 @@ import { broadcastLobbyPlayerUpdated } from './lobbyBroadcasts.js'
 import { sendFeatureServerAction } from './protocol/v2/index.js'
 
 export type {
+	ActionMatchReplayCheckpointRequest,
 	ActionSpectatorActionStreamRequest,
 	ActionSpectatorProvideSnapshotRequest,
 	ActionSpectatorRequestSnapshotRequest,
 	ActionSpectatorSetRoleRequest,
 	ActionSpectatorWatchTargetRequest,
+}
+
+export const matchReplayCheckpointAction = (
+	{ stepIndex, position, snapshotData }: ActionHandlerArgs<ActionMatchReplayCheckpointRequest>,
+	client: Client,
+) => {
+	const lobby = client.lobby
+	if (!lobby || client.isSpectator || !client.isInMatch) return
+	lobby.matchReplay.captureCheckpoint(client.id, { stepIndex, position, snapshotData })
 }
 
 export const spectatorActionStreamAction = (

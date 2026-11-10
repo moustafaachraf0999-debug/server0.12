@@ -1,4 +1,5 @@
 import { createServer, type Socket } from 'node:net'
+import { StringDecoder } from 'node:string_decoder'
 import {
 	createAdminSignatureVerifier,
 	loadAdminPublicKey,
@@ -23,13 +24,14 @@ export const createAdminSocketDataHandler = (
 	verifyAdminSignature: AdminSignatureVerifier,
 	adminHandlers: AdminHandlerMap,
 ) => {
+	const decoder = new StringDecoder('utf8')
 	let pendingMessage = ''
 	let closedForInputLimit = false
 
 	return (data: Buffer) => {
 		if (closedForInputLimit) return
 
-		pendingMessage += data.toString()
+		pendingMessage += decoder.write(data)
 		const messages = pendingMessage.split('\n')
 		pendingMessage = messages.pop() ?? ''
 

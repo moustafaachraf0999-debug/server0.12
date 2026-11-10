@@ -16,6 +16,8 @@ import {
 } from './monitor/monitorStore.js'
 import { clearPlayerLobbyMembership } from './playerState.js'
 import { sendLobbyServerAction } from './protocol/v2/index.js'
+import { getSharedSyncGroupIdForLobby } from './sharedSyncGroups.js'
+import { resolveTeamCoopBlindAfterRosterChange } from './teamBlindFlowHandlers.js'
 
 const assignNextOwnerIfNeeded = (lobby: Lobby, departedPlayerId: string) => {
 	if (departedPlayerId !== lobby.ownerId) {
@@ -50,9 +52,10 @@ const finalizeLobbyDepartureState = (
 	removeEmptyLobby: (code: string) => void,
 	options: {
 		tryStartPendingBlind?: boolean
+		coopGroupId?: number
 	} = {},
 ) => {
-	const { tryStartPendingBlind = false } = options
+	const { tryStartPendingBlind = false, coopGroupId } = options
 
 	if (lobby.getPlayerCount() === 0) {
 		removeEmptyLobby(lobby.code)
@@ -64,6 +67,15 @@ const finalizeLobbyDepartureState = (
 	const departureResult = wasInMatch
 		? reconcileActiveMatchState(lobby, { reason: 'departure' })
 		: 'no_change'
+
+	if (
+		departureResult !== 'game_over' &&
+		wasInMatch &&
+		lobby.isInGame &&
+		coopGroupId !== undefined
+	) {
+		resolveTeamCoopBlindAfterRosterChange(lobby, coopGroupId)
+	}
 
 	if (departureResult !== 'game_over') {
 		refreshLobbyNemesisAssignmentsForLobby(lobby)
@@ -85,9 +97,11 @@ const finalizePlayerDeparture = (
 	removeEmptyLobby: (code: string) => void,
 	options: {
 		matchStatus?: MonitorMatchPlayerStatus
+		isDisconnected?: boolean
 	} = {},
 ) => {
 	const wasInMatch = client.isInMatch
+	const coopGroupId = getSharedSyncGroupIdForLobby(lobby, client.team)
 
 	clearCoopSaveVoteForLobby(lobby)
 	pauseLobbyAnteTimerForControllerRelease(lobby, client.id, {
@@ -99,6 +113,7 @@ const finalizePlayerDeparture = (
 			lobby,
 			client,
 			options.matchStatus ?? 'left_lobby',
+			{ isDisconnected: options.isDisconnected },
 		)
 	}
 	lobby.removePlayer(client.id)
@@ -110,7 +125,9 @@ const finalizePlayerDeparture = (
 		details: { wasInMatch },
 	})
 
-	finalizeLobbyDepartureState(lobby, client.id, wasInMatch, removeEmptyLobby)
+	finalizeLobbyDepartureState(lobby, client.id, wasInMatch, removeEmptyLobby, {
+		coopGroupId,
+	})
 }
 
 const finalizeDisconnectedSlotDeparture = (
@@ -127,6 +144,7 @@ const finalizeDisconnectedSlotDeparture = (
 		return
 	}
 
+	const coopGroupId = getSharedSyncGroupIdForLobby(lobby, slot.savedState.team)
 	clearDisconnectedSlotIfPresent(lobby, playerId)
 	clearCoopSaveVoteForLobby(lobby)
 	if (wasInMatch) {
@@ -142,6 +160,7 @@ const finalizeDisconnectedSlotDeparture = (
 	})
 	finalizeLobbyDepartureState(lobby, playerId, wasInMatch, removeEmptyLobby, {
 		tryStartPendingBlind: true,
+		coopGroupId,
 	})
 }
 
@@ -151,6 +170,7 @@ export const leaveLobbyClient = (
 	removeEmptyLobby: (code: string) => void,
 	options: {
 		matchStatus?: MonitorMatchPlayerStatus
+		isDisconnected?: boolean
 	} = {},
 ) => {
 	finalizePlayerDeparture(lobby, client, removeEmptyLobby, options)

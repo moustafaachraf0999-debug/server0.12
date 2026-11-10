@@ -23,12 +23,10 @@ const expireDisconnectedLobbyClient = (lobby: Lobby, client: Client) => {
 		player: client,
 		level: 'warn',
 	})
-	recordMatchParticipantOutcome(lobby, client, 'disconnect_expired', {
-		isDisconnected: true,
-	})
 	lobby.deleteDisconnectedSlot(client.id)
 	leaveLobbyClient(lobby, client, removeLobbyByCode, {
 		matchStatus: 'disconnect_expired',
+		isDisconnected: true,
 	})
 	tryStartPendingBlindIfReady(lobby)
 	tryResolvePendingSkipBlindIfReady(lobby)

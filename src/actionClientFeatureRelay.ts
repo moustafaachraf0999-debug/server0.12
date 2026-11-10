@@ -47,6 +47,13 @@ export type ActionSpectatorActionStreamRequest = {
 	actionData: string
 	stepIndex: number
 }
+export type ActionMatchReplayCheckpointRequest = {
+	action: 'matchReplayCheckpoint'
+	stepIndex: number
+	position: 'initial' | 'before_action'
+	snapshotData: string
+}
+
 export type ActionSpectatorWatchTargetRequest = {
 	action: 'spectatorWatchTarget'
 	targetPlayerId: string
@@ -80,6 +87,7 @@ export type ActionClientFeatureRelay =
 	| ActionTeamCardSyncRequest
 	| ActionTeamHandLevelSyncRequest
 	| ActionSpectatorActionStreamRequest
+	| ActionMatchReplayCheckpointRequest
 	| ActionSpectatorWatchTargetRequest
 	| ActionSpectatorProvideSnapshotRequest
 	| ActionSpectatorRequestSnapshotRequest

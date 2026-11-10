@@ -111,6 +111,7 @@ export const startGameAction = (client: Client) => {
 	})
 
 	setLobbyPlayersLives(lobby, lives)
+	lobby.startMatchReplay()
 
 	for (const player of lobby.getPlayers()) {
 		if (player.isSpectator) {
